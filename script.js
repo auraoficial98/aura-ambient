@@ -93,7 +93,37 @@ async function vincularConCodigo(codigo) {
 document.getElementById('mode-tv-btn').onclick = () => {
     const opcion = confirm("¿Quieres escanear el código QR de la TV?");
     if (opcion) {
-        iniciarEscaneoQR();
+       async function iniciarEscaneoQR() {
+    console.log("Iniciando proceso de escaneo...");
+    const readerContainer = document.getElementById('qr-reader-container');
+    
+    if (!readerContainer) {
+        alert("ERROR: No encontré el div 'qr-reader-container' en este HTML.");
+        return;
+    }
+
+    readerContainer.style.display = 'flex';
+    
+    try {
+        html5QrCode = new Html5Qrcode("qr-reader");
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        alert("Solicitando acceso a la cámara..."); // Esto nos dirá si llegó a este punto
+
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            (decodedText) => {
+                detenerEscaneo();
+                vincularConCodigo(decodedText);
+            }
+        );
+    } catch (err) {
+        alert("ERROR DE CÁMARA: " + err);
+        console.error(err);
+        detenerEscaneo();
+    }
+}
     } else {
         const manual = prompt("Ingresa el código manualmente:");
         if (manual) vincularConCodigo(manual);
