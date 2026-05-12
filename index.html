@@ -57,7 +57,6 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* TRANSICIÓN DE SALIDA */
         .fade-out {
             animation: fadeOut 1.2s forwards ease-in;
         }
@@ -66,7 +65,6 @@
             to { opacity: 0; transform: scale(1.1); filter: blur(10px); }
         }
 
-        /* BOTÓN DE ENTRADA */
         .enter-trigger {
             position: absolute;
             bottom: 100px;
@@ -103,10 +101,15 @@
         <button class="enter-trigger" onclick="startExperience()">INICIAR EXPERIENCIA</button>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+
     <script>
         function startExperience() {
             document.getElementById('splash').classList.add('fade-out');
             setTimeout(() => {
+                // IMPORTANTE: Si el botón de vincular TV está en onboarding o en otra página,
+                // DEBES copiar el "qr-reader-container" y la librería QR a ese archivo también.
                 window.location.href = 'onboarding.html'; 
             }, 1200);
         }
