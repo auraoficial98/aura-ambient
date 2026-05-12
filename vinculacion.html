@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura TV - Vinculación</title>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #050505;
+            color: white;
+            font-family: 'Urbanist', sans-serif;
+            display: flex;  
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .container { text-align: center; }
+        h1 { letter-spacing: 15px; color: #d4af37; font-weight: 300; margin-bottom: 50px; }
+        
+        .qr-placeholder {
+            width: 300px;
+            height: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin: 0 auto 30px;
+            box-shadow: 0 0 50px rgba(212, 175, 55, 0.2);
+        }
+
+        .pairing-code {
+            font-size: 48px;
+            letter-spacing: 10px;
+            font-weight: 600;
+            color: #d4af37;
+            margin-top: 20px;
+        }
+
+        p { color: rgba(255,255,255,0.5); letter-spacing: 2px; font-size: 14px; }
+        
+        #fireCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: radial-gradient(circle at bottom, #1a0f05 0%, #050505 80%);
+        }
+
+        #unlock-audio {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 9999;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: opacity 0.5s;
+        }
+        .unlock-card {
+            border: 2px solid #d4af37;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .unlock-card h2 { color: #d4af37; margin: 0; letter-spacing: 3px; }
+        .unlock-card p { margin-top: 10px; color: white; opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div id="unlock-audio">
+        <div class="unlock-card">
+            <h2>PRESIONA PARA ACTIVAR</h2>
+            <p>Haz clic o presiona OK para permitir el sonido</p>
+        </div>
+    </div>
+
+    <canvas id="fireCanvas" style="opacity:0; transition: opacity 2s ease;"></canvas>
+
+    <div class="container" id="pairing-ui" style="position: relative; z-index: 10; transition: opacity 1s ease;">
+        <h1>AURA TV</h1>
+        <div class="qr-placeholder" id="qr-container">
+            <img src="" alt="QR Aura" id="qr-image">
+        </div>
+        <p>ESCANEA EL CÓDIGO O INGRESA ESTA CLAVE:</p>
+        <div class="pairing-code" id="code-display">...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const supabaseUrl = 'https://xtohtuzuprnwzpkzymmw.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0b2h0dXp1cHJud3pwa3p5bW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDEwOTAsImV4cCI6MjA5MzkxNzA5MH0.WxAKCke6eBkerjluCPHGXyD6-zyx8UzyYRMHV9ZG9S0';
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+let canalRealtime;
+const canvas = document.getElementById('fireCanvas');
+const ctx = canvas.getContext('2d');
+let particles = [];
+let globalBrightness = 0.8;
+let audioCtx, fireGain, windGain;
+
+document.getElementById('unlock-audio').onclick = function() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    this.style.opacity = "0";
+    setTimeout(() => this.style.display = "none", 500);
+    console.log("Audio desbloqueado por el usuario.");
+};
+
+function initAudioTV() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+    const windFilter = audioCtx.createBiquadFilter();
+    windFilter.type = 'lowpass';
+    windFilter.frequency.value = 400;
+    windGain = audioCtx.createGain();
+    windGain.gain.value = 0.3;
+    const windSource = audioCtx.createBufferSource();
+    windSource.buffer = buffer;
+    windSource.loop = true;
+    windSource.connect(windFilter);
+    windFilter.connect(windGain);
+    windGain.connect(audioCtx.destination);
+    windSource.start();
+
+    const fireSource = audioCtx.createBufferSource();
+    fireSource.buffer = buffer;
+    fireSource.loop = true;
+    fireGain = audioCtx.createGain();
+    fireGain.gain.value = 0.5;
+    const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+    scriptNode.onaudioprocess = (e) => {
+        const out = e.outputBuffer.getChannelData(0);
+        for (let i = 0; i < out.length; i++) {
+            out[i] = Math.random() > 0.9992 ? (Math.random() * 2 - 1) * 15 : 0;
+        }
+    };
+    fireSource.connect(scriptNode);
+    scriptNode.connect(fireGain);
+    fireGain.connect(audioCtx.destination);
+    fireSource.start();
+}
+
+function conectarCanal(codigo) {
+    canalRealtime = supabaseClient.channel(`aura_${codigo}`);
+
+    canalRealtime
+    .on('broadcast', { event: 'orden' }, (payload) => {
+        const { tipo, valor } = payload.payload;
+        console.log("Orden recibida:", tipo);
+
+        // 1. Lógica de Sincronización Inicial
+        if (tipo === 'SYNC_TOTAL') {
+            console.log("Sincronizando estado...");
+            globalBrightness = valor.brillo;
+            canvas.style.filter = `brightness(${0.5 + valor.brillo}) contrast(${100 + valor.brillo * 30}%)`;
+            
+            if (fireGain && audioCtx) {
+                fireGain.gain.setTargetAtTime(valor.fuego, audioCtx.currentTime, 0.1);
+            }
+            if (windGain && audioCtx) {
+                windGain.gain.setTargetAtTime(valor.viento, audioCtx.currentTime, 0.1);
+            }
+        }
+
+        // 2. Lógica de Vinculación Exitosa
+        if (tipo === 'VINCULACION_EXITOSA') {
+            activarModoAmbiente();
+            initAudioTV(); 
+        }
+
+        // 3. Órdenes de Control en tiempo real
+        if (tipo === 'CAMBIO_BRILLO') {
+            globalBrightness = valor;
+            canvas.style.filter = `brightness(${0.5 + valor}) contrast(${100 + valor * 30}%)`;
+        }
+        if (tipo === 'SET_AUDIO_FIRE' && fireGain) {
+            fireGain.gain.setTargetAtTime(valor, audioCtx.currentTime, 0.1);
+        }
+        if (tipo === 'SET_AUDIO_WIND' && windGain) {
+            windGain.gain.setTargetAtTime(valor, audioCtx.currentTime, 0.1);
+        }
+    })
+    .subscribe();
+}
+
+// --- VISUALES ---
+class Particle {
+    constructor() { this.init(); }
+    init() {
+        this.x = canvas.width / 2 + (Math.random() * 200 - 100);
+        this.y = canvas.height + 20;
+        this.vx = Math.random() * 2 - 1;
+        this.vy = -(Math.random() * 3 + 1.5);
+        this.size = Math.random() * 60 + 30;
+        this.life = 1;
+        this.decay = Math.random() * 0.008 + 0.004;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy * (globalBrightness + 0.3);
+        this.life -= this.decay;
+        if (this.life <= 0) this.init();
+    }
+    draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+        const h = 5 + (this.life * 25); 
+        ctx.fillStyle = `hsla(${h}, 100%, 50%, ${this.life * globalBrightness})`;
+        ctx.fill();
+    }
+}
+
+function animate() {
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.15)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(animate);
+}
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+
+function activarModoAmbiente() {
+    const ui = document.getElementById('pairing-ui');
+    const canvasElement = document.getElementById('fireCanvas');
+    ui.style.opacity = "0"; 
+    setTimeout(() => {
+        ui.style.display = "none";
+        canvasElement.style.opacity = "1"; 
+        resize();
+        if (particles.length === 0) {
+            for (let i = 0; i < 100; i++) particles.push(new Particle());
+            animate();
+        }
+    }, 500);
+}
+
+function generarCodigo() {
+    const caracteres = 'ABC123456789';
+    let resultado = '';
+    for (let i = 0; i < 5; i++) {
+        resultado += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    document.getElementById('code-display').innerText = resultado;
+    document.getElementById('qr-image').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${resultado}`;
+    conectarCanal(resultado);
+}
+
+window.addEventListener('resize', resize);
+window.onload = generarCodigo;
+</script>
+</body>
+</html>

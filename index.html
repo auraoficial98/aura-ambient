@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura - Welcome</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark: #050505;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            background-color: var(--dark);
+            font-family: 'Urbanist', sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+            color: white;
+        }
+
+        /* CONTENEDOR PRINCIPAL */
+        .splash-container {
+            text-align: center;
+            animation: fadeIn 2s ease-out;
+        }
+
+        /* LOGO CON EFECTO DE RESPIRACIÓN */
+        .logo-aura {
+            font-size: 60px;
+            letter-spacing: 25px;
+            font-weight: 300;
+            margin-bottom: 20px;
+            color: white;
+            text-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+            animation: breathe 4s infinite ease-in-out;
+        }
+
+        .tagline {
+            font-size: 10px;
+            letter-spacing: 5px;
+            color: var(--gold);
+            opacity: 0.7;
+            text-transform: uppercase;
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.03); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* TRANSICIÓN DE SALIDA */
+        .fade-out {
+            animation: fadeOut 1.2s forwards ease-in;
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; transform: scale(1.1); filter: blur(10px); }
+        }
+
+        /* BOTÓN DE ENTRADA */
+        .enter-trigger {
+            position: absolute;
+            bottom: 100px;
+            background: none;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            padding: 15px 45px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 11px;
+            letter-spacing: 4px;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+        }
+
+        .enter-trigger:hover {
+            border-color: var(--gold);
+            background: rgba(212, 175, 55, 0.05);
+            letter-spacing: 6px;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="qr-reader-container" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 10000; flex-direction: column; align-items: center; justify-content: center;">
+        <div id="qr-reader" style="width: 90%; max-width: 400px; border: 2px solid #d4af37; border-radius: 15px; overflow: hidden;"></div>
+        <button id="close-qr" style="margin-top: 20px; padding: 12px 30px; background: #d4af37; border: none; border-radius: 8px; color: black; font-weight: bold; font-family: 'Urbanist', sans-serif; cursor: pointer;">CANCELAR</button>
+    </div>
+
+    <div class="splash-container" id="splash">
+        <div class="logo-aura">AURA</div>
+        <div class="tagline">The Art of Atmosphere</div>
+        <button class="enter-trigger" onclick="startExperience()">INICIAR EXPERIENCIA</button>
+    </div>
+
+    <script>
+        function startExperience() {
+            document.getElementById('splash').classList.add('fade-out');
+            setTimeout(() => {
+                window.location.href = 'onboarding.html'; 
+            }, 1200);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura - Onboarding</title>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;600&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark: #050505;
+        }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            background-color: var(--dark);
+            font-family: 'Lato', sans-serif;
+            color: white; overflow: hidden;
+        }
+
+        .slider {
+            height: 100%; display: flex;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .slide {
+            min-width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            padding: 40px; box-sizing: border-box;
+            text-align: center;
+        }
+
+        .slide-image {
+            width: 250px; height: 250px;
+            background: radial-gradient(circle, rgba(212,175,55,0.1) 0%, transparent 70%);
+            border-radius: 50%; margin-bottom: 50px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 80px;
+        }
+
+        h2 {
+            font-family: 'Urbanist', sans-serif;
+            font-size: 28px; letter-spacing: 4px;
+            margin-bottom: 20px; font-weight: 300;
+        }
+
+        p {
+            font-size: 16px; line-height: 1.6;
+            color: rgba(255,255,255,0.6);
+            max-width: 300px; font-weight: 300;
+        }
+
+        .controls {
+            position: absolute; bottom: 50px;
+            width: 100%; display: flex; flex-direction: column;
+            align-items: center; gap: 20px;
+        }
+
+        .dots { display: flex; gap: 10px; margin-bottom: 10px; }
+        .dot { 
+            width: 8px; height: 8px; background: rgba(255,255,255,0.2); 
+            border-radius: 50%; transition: 0.3s;
+        }
+        .dot.active { background: var(--gold); width: 24px; border-radius: 4px; }
+
+        .btn-next {
+            background: white; color: black; border: none;
+            padding: 15px 60px; border-radius: 30px;
+            font-family: 'Urbanist', sans-serif; font-weight: 600;
+            letter-spacing: 2px; cursor: pointer; transition: 0.3s;
+        }
+
+        .btn-skip {
+            background: none; border: none; color: rgba(255,255,255,0.4);
+            font-size: 12px; letter-spacing: 1px; cursor: pointer;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="slider" id="slider">
+        <div class="slide">
+            <div class="slide-image">✨</div>
+            <h2>Bienvenido a Aura</h2>
+            <p>Descubre el arte de la atmósfera personalizada para tu descanso.</p>
+        </div>
+        <div class="slide">
+            <div class="slide-image">🔥</div>
+            <h2>Control Total</h2>
+            <p>Ajusta el rugido del fuego y el susurro del aire a tu gusto.</p>
+        </div>
+        <div class="slide">
+            <div class="slide-image">🌙</div>
+            <h2>Paz Mental</h2>
+            <p>Diseñado para sincronizarse con tu ritmo de vida y mejorar tu sueño.</p>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="dots">
+            <div class="dot active"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+        <button class="btn-next" onclick="nextSlide()">CONTINUAR</button>
+        <button class="btn-skip" onclick="goToLogin()">Saltar introducción</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slider = document.getElementById('slider');
+        const dots = document.querySelectorAll('.dot');
+
+        function updateDots() {
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentSlide);
+            });
+        }
+
+        function nextSlide() {
+            if (currentSlide < 2) {
+                currentSlide++;
+                slider.style.transform = `translateX(-${currentSlide * 100}%)`;
+                updateDots();
+                if (currentSlide === 2) {
+                    document.querySelector('.btn-next').innerText = "EMPEZAR";
+                }
+            } else {
+                goToLogin();
+            }
+        }
+
+        function goToLogin() {
+            // Animación de salida suave
+            document.body.style.opacity = '0';
+            document.body.style.transition = '0.8s';
+            setTimeout(() => {
+                window.location.href = 'login.html';
+            }, 800);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura - Acceso Premium</title>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;600&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+    <!-- Lucide Icons para los iconos de usuario y candado -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --gold-primary: #c5a059;
+            --gold-glow: rgba(197, 160, 89, 0.3);
+            --dark-panel: #1a1c20;
+            --bg-black: #0f1012;
+            --btn-blue: #001a35;
+            --error-red: #ff4d4d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-black);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            /* Fondo con desenfoque simulando la imagen */
+            background-image: radial-gradient(circle at center, #1e1e1e 0%, #000 100%);
+            overflow: hidden;
+        }
+
+        /* Contenedor principal estilo móvil/tarjeta */
+        .login-card {
+            background-color: var(--dark-panel);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px 30px;
+            border-radius: 35px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+            position: relative;
+        }
+
+        /* Logo de Llama/Gota */
+        .logo-container {
+            margin-bottom: 30px;
+        }
+
+        .aura-logo-svg {
+            width: 60px;
+            height: 60px;
+            fill: none;
+            stroke: var(--gold-primary);
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 8px var(--gold-glow));
+        }
+
+        .brand-name {
+            font-family: 'Urbanist', sans-serif;
+            font-size: 42px;
+            font-weight: 300;
+            letter-spacing: 4px;
+            margin-top: 5px;
+            color: #fff;
+        }
+
+        /* Estilo de Inputs con Glow */
+        .input-group {
+            position: relative;
+            margin-bottom: 15px;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            width: 18px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid #444;
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--gold-primary);
+            box-shadow: 0 0 10px var(--gold-glow);
+            background: rgba(255,255,255,0.06);
+        }
+
+        /* Botón Ingresar */
+        .btn-ingresar {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--btn-blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-ingresar:hover {
+            opacity: 0.9;
+        }
+
+        /* Botón Google */
+        .btn-google {
+            width: 100%;
+            padding: 12px;
+            background-color: white;
+            color: black;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .google-icon {
+            width: 18px;
+        }
+
+        /* Footer del form */
+        .footer-links {
+            margin-top: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .link-olvido {
+            color: var(--gold-primary);
+            text-decoration: none;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .btn-suscribirme {
+            background-color: var(--gold-primary);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Mensaje de Error */
+        .error-message {
+            color: var(--error-red);
+            font-size: 12px;
+            margin-bottom: 15px;
+            display: none;
+            text-align: center;
+            animation: fadeIn 0.3s;
+        }
+
+        .copyright {
+            position: absolute;
+            bottom: -40px;
+            left: 0;
+            right: 0;
+            font-size: 10px;
+            color: #555;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Shake animation para error */
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card" id="card">
+        <div class="logo-container">
+            <!-- Icono de Llama estilizada como la imagen -->
+            <svg class="aura-logo-svg" viewBox="0 0 24 24">
+                <path d="M12 2C12 2 19 7.5 19 12.5C19 16.0899 15.866 19 12 19C8.13401 19 5 16.0899 5 12.5C5 10.5 6.5 8 8 6C8 9 9.5 11 11 11C11 11 11 2 12 2Z" />
+                <circle cx="12" cy="15" r="1" fill="currentColor" />
+            </svg>
+            <div class="brand-name">Aura</div>
+        </div>
+
+        <div id="errorBox" class="error-message">Contraseña incorrecta, vuelve a intentarlo.</div>
+
+        <div class="input-group">
+            <i data-lucide="user"></i>
+            <input type="text" id="username" placeholder="Correo o Usuario">
+        </div>
+
+        <div class="input-group">
+            <i data-lucide="lock"></i>
+            <input type="password" id="password" placeholder="Contraseña">
+        </div>
+
+        <button class="btn-ingresar" onclick="validate()">Ingresar</button>
+
+        <button class="btn-google">
+            <img src="https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" class="google-icon" alt="G">
+            Continuar con Google
+        </button>
+
+        <div class="footer-links">
+            <a href="#" class="link-olvido">Olvide mi contraseña</a>
+            <a href="#" class="btn-suscribirme">Suscribirme</a>
+        </div>
+
+        <div class="copyright">
+            Aura © 2024 - Todos los derechos reservados
+        </div>
+    </div>
+
+    <script>
+        // Inicializar iconos
+        lucide.createIcons();
+
+        function validate() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const errorBox = document.getElementById('errorBox');
+            const card = document.getElementById('card');
+
+            // Simulación de credenciales (admin / 1234)
+            if (user === "admin" && pass === "1234") {
+                errorBox.style.display = "none";
+                // Efecto de salida
+                card.style.opacity = "0";
+                card.style.transform = "scale(0.95)";
+                card.style.transition = "all 0.5s ease";
+                
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 500);
+            } else {
+                // Mostrar error y animar
+                errorBox.style.display = "block";
+                card.classList.remove('shake');
+                void card.offsetWidth; // Trigger reflow
+                card.classList.add('shake');
+                
+                // Limpiar campo password
+                document.getElementById('password').value = "";
+            }
+        }
+
+        // Permitir Enter
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') validate();
+        });
+    </script>
+</body>
+</html>
