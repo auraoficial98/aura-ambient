@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aura TV - Vinculación</title>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark-bg: #050505;
+            --glow-gold: rgba(212, 175, 55, 0.3);
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: 'Urbanist', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            transition: background-color 1s ease;
+        }
+
+        .container { text-align: center; z-index: 10; }
+
+        h1 {
+            letter-spacing: 15px;
+            color: var(--gold);
+            font-weight: 300;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+        }
+
+        .qr-placeholder {
+            width: 300px; height: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 20px;
+            margin: 0 auto 30px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: auraHeartbeat 3s ease-in-out infinite;
+        }
+
+        .qr-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .code-box {
+            font-size: 48px;
+            font-weight: 600;
+            letter-spacing: 8px;
+            color: var(--gold);
+            margin-top: 20px;
+            text-shadow: 0 0 20px var(--glow-gold);
+            animation: auraTextPulse 3s ease-in-out infinite;
+        }
+
+        .instruction {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 10px;
+            letter-spacing: 1px;
+            font-weight: 300;
+        }
+
+        #fireCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 1.5s ease;
+            pointer-events: none;
+        }
+
+        #brightness-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background-color: black;
+            opacity: 0;
+            z-index: 2;
+            pointer-events: none;
+            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        #pairing-ui {
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        @keyframes auraHeartbeat {
+            0%   { transform: scale(1);    box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+            50%  { transform: scale(1.02); box-shadow: 0 0 60px rgba(212, 175, 55, 0.15); }
+            100% { transform: scale(1);    box-shadow: 0 0 40px rgba(0,0,0,0.8); }
+        }
+
+        @keyframes auraTextPulse {
+            0%   { opacity: 0.8; text-shadow: 0 0 15px rgba(212, 175, 55, 0.2); }
+            50%  { opacity: 1;   text-shadow: 0 0 30px rgba(212, 175, 55, 0.5); }
+            100% { opacity: 0.8; text-shadow: 0 0 15px rgba(212, 175, 55, 0.2); }
+        }
+
+        /* ─── ANIMACIONES DE PARPADEO TÉRMICO Y MODOS VISUALES AURA TV ─── */
+        @keyframes parpadeo-fuego-naranja {
+            0%, 100% { filter: drop-shadow(0px 0px 22px rgba(255, 95, 0, 0.35)) brightness(0.9); }
+            33% { filter: drop-shadow(0px 0px 38px rgba(255, 60, 0, 0.55)) brightness(1.08); }
+            66% { filter: drop-shadow(0px 0px 20px rgba(255, 130, 0, 0.30)) brightness(0.88); }
+        }
+
+        @keyframes parpadeo-fuego-rojo {
+            0%, 100% { filter: drop-shadow(0px 0px 22px rgba(230, 20, 20, 0.35)) brightness(0.8); }
+            33% { filter: drop-shadow(0px 0px 38px rgba(255, 10, 10, 0.55)) brightness(1.0); }
+            66% { filter: drop-shadow(0px 0px 20px rgba(180, 0, 0, 0.25)) brightness(0.75); }
+        }
+
+        @keyframes parpadeo-fuego-azul {
+            0%, 100% { filter: drop-shadow(0px 0px 22px rgba(0, 90, 255, 0.35)) brightness(0.85); }
+            33% { filter: drop-shadow(0px 0px 38px rgba(0, 160, 255, 0.55)) brightness(1.08); }
+            66% { filter: drop-shadow(0px 0px 20px rgba(0, 40, 180, 0.25)) brightness(0.8); }
+        }
+
+        body.aura-pixel-mode-active #img-leña-pixel,
+        body.aura-pixel-mode-active #fireCanvas {
+            image-rendering: pixelated !important;
+            image-rendering: crisp-edges !important;
+        }
+        /* ─── ANIMACIONES DE PARPADEO TÉRMICO Y MODOS VISUALES AURA TV ─── */
+        @keyframes parpadeo-fuego-naranja {
+            0%, 100% { filter: drop-shadow(0px 0px 22px rgba(255, 95, 0, 0.35)) brightness(0.9); }
+            33% { filter: drop-shadow(0px 0px 38px rgba(255, 60, 0, 0.55)) brightness(1.08); }
+            66% { filter: drop-shadow(0px 0px 20px rgba(255, 130, 0, 0.30)) brightness(0.88); }
+        }
+
+        @keyframes parpadeo-fuego-rojo {
+            0%, 100% { filter: drop-shadow(0px 0px 22px rgba(230, 20, 20, 0.35)) brightness(0.8); }
+            33% { filter: drop-shadow(0px 0px 38px rgba(255, 10, 10, 0.55)) brightness(1.0); }
+            66% { filter: drop-shadow(0px 0px 20px rgba(180, 0, 0, 0.25)) brightness(0.75); }
+        }
+
+        @keyframes parpadeo-fuego-azul {
+            0%, 100% { filter: drop-shadow(0px 0px 22px rgba(0, 90, 255, 0.35)) brightness(0.85); }
+            33% { filter: drop-shadow(0px 0px 38px rgba(0, 160, 255, 0.55)) brightness(1.08); }
+            66% { filter: drop-shadow(0px 0px 20px rgba(0, 40, 180, 0.25)) brightness(0.8); }
+        }
+
+        body.aura-pixel-mode-active #img-leña-pixel,
+        body.aura-pixel-mode-active #fireCanvasModular {
+            image-rendering: pixelated !important;
+            image-rendering: crisp-edges !important;
+        }
+    </style>
+</head>
+<body>
+
+    
+
+    <div id="brightness-overlay"></div>
+   <!-- ─── FACHADA MAESTRA TV UNIFICADA ─── -->
+    <div id="contenedor-chimenea-modular" style="position: absolute; inset: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;">
+        
+        <!-- 1. Fondo Nicho Cavernoso -->
+        <div id="capa-fondo-nicho" 
+             style="position: absolute; inset: 0; z-index: 6; opacity: 1; transition: opacity 1.2s ease, background 0.8s ease;
+                    background: radial-gradient(circle at 50% 100%, rgba(180, 60, 10, calc(0.45 * var(--brillo-usuario, 0.8))) 0%, rgba(60, 20, 5, calc(0.25 * var(--brillo-usuario, 0.8))) 50%, rgba(0, 0, 0, 0.95) 85%);">
+        </div>
+
+        <!-- 2. Canvas de Fuego Modular (Centrado con la leña) -->
+        <canvas id="fireCanvasModular" style="position: absolute; top: 52%; left: 50%; transform: translate(-50%, -50%); width: 70vw; height: 42vh; max-width: 850px; max-height: 480px; z-index: 7; pointer-events: none; mix-blend-mode: screen; filter: blur(2px) contrast(2.8) url(#distorsion-calor-aura); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%); mask-image: linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%);"></canvas>
+
+        <!-- 3. Leña Scaled (Dimensiones equivalentes al marco) -->
+        <div id="capa-leña-incandescente" style="position: absolute; inset: 0; z-index: 8; opacity: 1; transition: opacity 1.2s ease; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12vh; pointer-events: none;">
+            <img id="img-leña-real" src="leña-signature.png" style="width: 72%; max-width: 820px; height: auto; position: relative; z-index: 8; transition: opacity 0.3s ease;">
+            <img id="img-leña-pixel" src="leña-pixel.png" style="width: 72%; max-width: 820px; height: auto; position: absolute; z-index: 8; display: none; opacity: 0; transition: opacity 0.3s ease; image-rendering: pixelated;">
+        </div>
+
+        <!-- 4. Marco Signature de la Chimenea -->
+        <div id="capa-marco-signature" 
+             style="position: absolute; inset: 0; background: url('marco-signature.png') center center / contain no-repeat; z-index: 10; opacity: 1; transition: all 1.5s ease; animation: parpadeo-fuego-naranja 3s infinite ease-in-out;">
+        </div>
+        
+        <!-- 5. Reflejo del Suelo Ambiental -->
+        <div id="reflejo-suelo-ambiental" style="position: absolute; bottom: 0; left: 5%; width: 90%; height: 160px; background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.15), transparent 70%); z-index: 4; mix-blend-mode: screen; pointer-events: none; opacity: 1; transition: opacity 1.2s ease;"></div>
+    </div>
+
+    <!-- Filtro SVG de Ondulación Térmica -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <defs>
+            <filter id="distorsion-calor-aura">
+                <feTurbulence type="fractalNoise" baseFrequency="0.015 0.08" numOctaves="2" result="noise">
+                    <animate attributeName="baseFrequency" dur="5s" values="0.015 0.08; 0.015 0.4; 0.015 0.08" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+        </defs>
+    </svg>
+
+    <div id="audio-poka-yoke-overlay" onclick="desbloquearAudioManual()" 
+         style="position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; 
+                background: rgba(5, 5, 5, 0.88); backdrop-filter: blur(20px); 
+                -webkit-backdrop-filter: blur(20px); z-index: 9999; display: flex; 
+                flex-direction: column; align-items: center; justify-content: center; 
+                cursor: pointer; transition: opacity 0.6s ease;">
+        <div style="text-align: center; max-width: 500px; padding: 20px;">
+            <div style="font-size: 14px; color: #d4af37; letter-spacing: 4px; margin-bottom: 20px; font-weight: 300;">SISTEMA DE CONTROL DE RED</div>
+            <div style="font-size: 24px; color: white; font-weight: 400; letter-spacing: 2px; line-height: 1.6; text-transform: uppercase;">
+                Haz clic en la pantalla o presiona ENTER para ver Código QR
+            </div>
+            <div style="font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: 1px; margin-top: 25px;">
+                AURA TECHNICAL ECOSYSTEM
+            </div>
+        </div>
+    </div>
+
+    <div id="pairing-ui" class="container">
+    <h1>Aura TV</h1>
+    <div class="qr-placeholder" id="qr-container"></div>
+    <div class="instruction">ESCANEA EL QR O INGRESA EL CÓDIGO EN TU MÓVIL</div>
+    <div id="code-display" class="code-box">-----</div>
+</div>
+
+    <script>
+        const supabaseUrl  = 'https://xtohtuzuprnwzpkzymmw.supabase.co';
+        const supabaseKey  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0b2h0dXp1cHJud3pwa3p5bW13Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNDEwOTAsImV4cCI6MjA5MzkxNzA5MH0.WxAKCke6eBkerjluCPHGXyD6-zyx8UzyYRMHV9ZG9S0';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let canalControl = null;
+        let codigoActual = '';
+
+        let audioCtx           = null;
+        let fireGain           = null;
+        let windGain           = null;
+        let fuentesAudioActive = [];
+
+        let motorAudioListo    = false;
+        const canvas = document.getElementById('fireCanvas');
+        const ctx    = canvas.getContext('2d');
+        let particles   = [];
+        let animFrameId = null;
+
+        let factorFuegoVisual  = 1.0; 
+        let factorVientoVisual = 1.0;
+        let nivelBrilloVisual  = 1.0; 
+        window.tvAmbienteActivo = 1; // Estado base del MVP por defecto
+        let wakeLockObj = null;
+
+        async function solicitarWakeLock() {
+            if ('wakeLock' in navigator) {
+                try { wakeLockObj = await navigator.wakeLock.request('screen'); } catch(e) {}
+            }
+        }
+
+        function liberarWakeLock() {
+            if (wakeLockObj !== null) {
+                wakeLockObj.release().then(() => { wakeLockObj = null; });
+            }
+        }
+
+       function desbloquearAudioManual() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const overlay = document.getElementById('audio-poka-yoke-overlay');
+    if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => { overlay.style.display = 'none'; }, 600);
+    }
+
+    if (!codigoActual) {
+        generarCodigo();
+    }
+}
+        // Capturador para el botón OK / Enter del control remoto de la Smart TV
+        document.addEventListener('keydown', (e) => {
+            const overlay = document.getElementById('audio-poka-yoke-overlay');
+            if (overlay && overlay.style.display !== 'none' && (e.key === 'Enter' || e.keyCode === 13)) {
+                desbloquearAudioManual();
+            }
+        });
+
+        function crearNodoRuido(frecuencia) {
+            const bufferSize = audioCtx.sampleRate * 2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data   = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+            const source = audioCtx.createBufferSource();
+            source.buffer = buffer;
+            source.loop   = true;
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type            = 'lowpass';
+            filter.frequency.value = frecuencia;
+
+            source.connect(filter);
+            return { source, filter };
+        }
+
+        function crearNodoCrujidos() {
+            const scriptNode = audioCtx.createScriptProcessor(4096, 1, 1);
+            scriptNode.onaudioprocess = (e) => {
+                const out = e.outputBuffer.getChannelData(0);
+                
+                const probabilidadChispa = window.audioTVLossless ? 0.9980 : 0.9992;
+                const factorIntensidad   = window.audioTVLossless ? 15 : 12;
+
+                for (let i = 0; i < out.length; i++) {
+                    out[i] = Math.random() > probabilidadChispa ? (Math.random() * 2 - 1) * factorIntensidad : 0;
+                }
+            };
+            return scriptNode;
+        }
+
+        function apagarMotorAudio() {
+            fuentesAudioActive.forEach(src => { try { src.stop(); } catch(e) {} });
+            fuentesAudioActive = [];
+            if (audioCtx) {
+                try { audioCtx.close(); } catch(e) {}
+                audioCtx = null; fireGain = null; windGain = null;
+            }
+            motorAudioListo = false;
+        }
+
+        function inicializarMotorAudio() {
+            if (motorAudioListo) return;
+
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            fireGain = audioCtx.createGain();
+            windGain = audioCtx.createGain();
+
+            fireGain.gain.setValueAtTime(factorFuegoVisual, audioCtx.currentTime);
+            windGain.gain.setValueAtTime(factorVientoVisual, audioCtx.currentTime);
+
+            fireGain.connect(audioCtx.destination);
+            windGain.connect(audioCtx.destination);
+
+            const fuego = crearNodoRuido(400);
+            fuego.filter.connect(fireGain);
+            fuego.source.start();
+            fuentesAudioActive.push(fuego.source);
+
+            const crujidos = crearNodoCrujidos();
+            crujidos.connect(fireGain);
+
+            const viento = crearNodoRuido(150);
+            viento.filter.connect(windGain);
+            viento.source.start();
+            fuentesAudioActive.push(viento.source);
+
+            motorAudioListo = true;
+            console.log('Aura Audio TV: Motor encendido de forma síncrona ✓');
+        }
+
+        const textosTV = {
+            es: {
+                titulo: "Aura TV",
+                instruccion: "ESCANEA EL QR O INGRESA EL CÓDIGO EN TU MÓVIL",
+                btnAudio: "Haz clic o presiona OK para permitir el sonido"
+            },
+            en: {
+                titulo: "Aura TV",
+                instruccion: "SCAN THE QR OR ENTER THE CODE ON YOUR MOBILE",
+                btnAudio: "Click or press OK to allow sound"
+            }
+        };
+
+        function cambiarIdiomaTV(lang) {
+            const idioma = textosTV[lang] || textosTV.es;
+            
+            const h1 = document.querySelector('#pairing-ui h1');
+            const instruccion = document.querySelector('.instruction');
+            const btnAudio = document.getElementById('btn-audio-init');
+            
+            if (h1) h1.innerText = idioma.titulo;
+            if (instruccion) instruccion.innerText = idioma.instruccion;
+            if (btnAudio) btnAudio.innerText = idioma.btnAudio;
+            
+            console.log(`Aura TV: Idioma cambiado a [${lang.toUpperCase()}] ✓`);
+        }
+
+        function aplicarOrdenAudio(tipo, valor) {
+            if (tipo === 'SYNC_TOTAL') {
+                document.getElementById('brightness-overlay').style.opacity = (1 - valor.brillo);
+                factorFuegoVisual  = valor.fuego;
+                factorVientoVisual = valor.viento;
+                if (fireGain) fireGain.gain.setTargetAtTime(valor.fuego,  audioCtx.currentTime, 0.05);
+                if (windGain) windGain.gain.setTargetAtTime(valor.viento, audioCtx.currentTime, 0.05);
+            }
+
+            if (tipo === 'SET_PIXEL_MODE') {
+                window.tvPixelMode = valor;
+                const imgReal  = document.getElementById('img-leña-real');
+                const imgPixel = document.getElementById('img-leña-pixel');
+
+                if (valor) {
+                    if (imgReal) { imgReal.style.opacity = '0'; setTimeout(() => { imgReal.style.display = 'none'; }, 300); }
+                    if (imgPixel) { imgPixel.style.display = 'block'; setTimeout(() => { imgPixel.style.opacity = '1'; }, 10); }
+                    document.body.classList.add('aura-pixel-mode-active');
+                } else {
+                    if (imgPixel) { imgPixel.style.opacity = '0'; setTimeout(() => { imgPixel.style.display = 'none'; }, 300); }
+                    if (imgReal) { imgReal.style.display = 'block'; setTimeout(() => { imgReal.style.opacity = '1'; }, 10); }
+                    document.body.classList.remove('aura-pixel-mode-active');
+                }
+            }
+
+            if (tipo === 'SET_COLOR_SPECTRUM') {
+                aplicarTransicionColorTV(parseInt(valor));
+            }
+
+            if (tipo === 'BRIGHTNESS') {
+                document.getElementById('brightness-overlay').style.opacity = (1 - valor);
+                document.documentElement.style.setProperty('--brillo-usuario', valor);
+            }
+
+            if (tipo === 'SET_AUDIO_FIRE') {
+                factorFuegoVisual = valor;
+                if (fireGain) fireGain.gain.setTargetAtTime(valor, audioCtx.currentTime, 0.05);
+            }
+
+            if (tipo === 'SET_AUDIO_WIND') {
+                factorVientoVisual = valor;
+                if (windGain) windGain.gain.setTargetAtTime(valor, audioCtx.currentTime, 0.05);
+            }
+        }
+
+        function procesarOrdenRemota(payload) {
+            const { tipo, valor } = payload;
+
+            if (tipo === 'DESVINCULAR_TV') {
+                desactivarModoAmbiente();
+                return;
+            }
+
+            if (tipo === 'VINCULACION_EXITOSA') {
+                activarModoAmbiente();
+                return;
+            }
+
+            if (tipo === 'SYNC_TOTAL') {
+                factorFuegoVisual = valor.fuego;
+                factorVientoVisual = valor.viento;
+            }
+            if (tipo === 'SET_AUDIO_FIRE') factorFuegoVisual = valor;
+            if (tipo === 'SET_AUDIO_WIND') factorVientoVisual = valor;
+
+            if (motorAudioListo) {
+                aplicarOrdenAudio(tipo, valor);
+            }
+            
+            if (tipo === 'SET_LANGUAGE') {
+                cambiarIdiomaTV(valor);
+            }
+        }
+
+       function activarModoAmbiente() {
+            const ui = document.getElementById('pairing-ui');
+            const fachadaContainer = document.getElementById('contenedor-chimenea-modular');
+
+            if (ui) {
+                ui.style.opacity   = '0';
+                ui.style.transform = 'scale(0.95)';
+            }
+
+            inicializarMotorAudio();
+            solicitarWakeLock();
+
+            setTimeout(() => {
+                if (ui) ui.style.display = 'none';
+                if (fachadaContainer) fachadaContainer.style.opacity = '1';
+                resize();
+
+                if (particles.length === 0) {
+                    for (let i = 0; i < 120; i++) particles.push(new FireParticle());
+                }
+                if (!animFrameId) animate();
+                
+                if (fireGain) fireGain.gain.setValueAtTime(factorFuegoVisual, audioCtx.currentTime);
+                if (windGain) windGain.gain.setValueAtTime(factorVientoVisual, audioCtx.currentTime);
+            }, 800);
+        }
+
+        // ─── CIRUGÍA APLICADA: RECONEXIÓN INFINITA ───
+        async function desactivarModoAmbiente() {
+            liberarWakeLock();
+            apagarMotorAudio();
+
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+            particles = [];
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.style.opacity = '0';
+
+            const btn = document.getElementById('btn-audio-init');
+            if (btn) btn.style.display = 'block';
+
+            const ui = document.getElementById('pairing-ui');
+            ui.style.display = 'block';
+            setTimeout(() => {
+                ui.style.opacity   = '1';
+                ui.style.transform = 'scale(1)';
+            }, 50);
+
+            // Destruimos el canal viejo de forma segura para evitar choques
+            if (canalControl) {
+                try { await supabaseClient.removeChannel(canalControl); } catch(e){}
+                canalControl = null;
+            }
+            
+            // En lugar de generarCodigo() que mutaba la TV, abrimos de nuevo
+            // la puerta con la misma contraseña exacta que ya está en la pantalla.
+            conectarCanalSupabase(codigoActual);
+        }
+
+        // ─── TRANSICIÓN CROMÁTICA PROGRESIVA PARA TV ───
+        window.colorActualPosicion = 2; 
+        window.colorInterpolado = 2.0;
+        let animacionFadeId = null;
+
+        function aplicarTransicionColorTV(posDestino) {
+            if (animacionFadeId) cancelAnimationFrame(animacionFadeId);
+            const inicioTiempo = performance.now();
+            const valorOrigen = window.colorInterpolado;
+            const duracion = 850;
+
+            function pasoFade(tiempoActual) {
+                const transcurrido = tiempoActual - inicioTiempo;
+                const progreso = Math.min(transcurrido / duracion, 1.0);
+                const factorSuave = progreso < 0.5 
+                    ? 4 * progreso * progreso * progreso 
+                    : 1 - Math.pow(-2 * progreso + 2, 3) / 2;
+
+                const posVal = valorOrigen + (posDestino - valorOrigen) * factorSuave;
+                window.colorInterpolado = posVal;
+
+                const capaLeña = document.getElementById('capa-leña-incandescente');
+                if (capaLeña) {
+                    capaLeña.className = '';
+                    if (posVal <= 2.0) {
+                        const t = posVal - 1.0;
+                        const hue = -20 * (1 - t);
+                        const sat = 2.5 - (1.5 * t);
+                        capaLeña.style.filter = `hue-rotate(${hue}deg) saturate(${sat}) brightness(1.0) contrast(1.15)`;
+                    } else {
+                        const t = posVal - 2.0;
+                        if (t < 0.5) {
+                            const factorFase = t * 2;
+                            capaLeña.style.filter = `brightness(${1.0 + 0.6 * factorFase}) saturate(${1.0 - 0.95 * factorFase}) contrast(1.1)`;
+                        } else {
+                            const factorFase = (t - 0.5) * 2;
+                            capaLeña.style.filter = `hue-rotate(${190 * factorFase}deg) brightness(${1.6 - 0.5 * factorFase}) saturate(${0.05 + 3.45 * factorFase}) contrast(1.25)`;
+                        }
+                    }
+                }
+
+                if (progreso < 1.0) {
+                    animacionFadeId = requestAnimationFrame(pasoFade);
+                } else {
+                    window.colorInterpolado = posDestino;
+                }
+            }
+            animacionFadeId = requestAnimationFrame(pasoFade);
+
+            const capaFondoNicho = document.getElementById('capa-fondo-nicho');
+            const reflejoSuelo   = document.getElementById('reflejo-suelo-ambiental');
+            const marcoSignature = document.getElementById('capa-marco-signature');
+
+            if (posDestino === 1) {
+                if (capaFondoNicho) capaFondoNicho.style.background = `radial-gradient(circle at 50% 100%, rgba(180, 20, 10, 0.45) 0%, rgba(60, 10, 5, 0.25) 50%, rgba(0, 0, 0, 0.95) 85%)`;
+                if (reflejoSuelo) reflejoSuelo.style.background = `radial-gradient(ellipse at top, rgba(255, 30, 0, 0.25), transparent 70%)`;
+                if (marcoSignature) marcoSignature.style.animation = 'parpadeo-fuego-rojo 3.5s infinite ease-in-out';
+            } else if (posDestino === 3) {
+                if (capaFondoNicho) capaFondoNicho.style.background = `radial-gradient(circle at 50% 100%, rgba(10, 80, 200, 0.45) 0%, rgba(5, 30, 80, 0.25) 50%, rgba(0, 0, 0, 0.95) 85%)`;
+                if (reflejoSuelo) reflejoSuelo.style.background = `radial-gradient(ellipse at top, rgba(0, 130, 255, 0.25), transparent 70%)`;
+                if (marcoSignature) marcoSignature.style.animation = 'parpadeo-fuego-azul 4s infinite ease-in-out';
+            } else {
+                if (capaFondoNicho) capaFondoNicho.style.background = `radial-gradient(circle at 50% 100%, rgba(180, 60, 10, 0.45) 0%, rgba(60, 20, 5, 0.25) 50%, rgba(0, 0, 0, 0.95) 85%)`;
+                if (reflejoSuelo) reflejoSuelo.style.background = `radial-gradient(ellipse at top, rgba(212, 175, 55, 0.15), transparent 70%)`;
+                if (marcoSignature) marcoSignature.style.animation = 'parpadeo-fuego-naranja 3s infinite ease-in-out';
+            }
+            window.colorActualPosicion = posDestino;
+        }
+
+        // ─── CLASE FireParticle CON DENSIDAD Y ESTELA ───
+        class FireParticle {
+            constructor() {
+                const currentCanvas = document.getElementById('fireCanvasModular');
+                this.canvasW = currentCanvas ? currentCanvas.width : 850;
+                this.canvasH = currentCanvas ? currentCanvas.height : 480;
+
+                const actor = Math.random();
+                this.actor = "fill";
+                if (actor < 0.15) this.actor = "hero";
+                else if (actor < 0.40) this.actor = "support";
+
+                const selectorCapa = Math.random();
+                if (selectorCapa < 0.40) {
+                    this.rol = 'base';
+                    this.x = (this.canvasW * 0.22) + Math.random() * (this.canvasW * 0.56); 
+                    this.y = this.canvasH - 18; 
+                    this.vy = -(Math.random() * 0.9 + 0.6);
+                    this.vx = (Math.random() * 0.2 - 0.10);
+                    this.baseWidth = Math.random() * 14 + 8;
+                    this.decay = Math.random() * 0.022 + 0.016;
+                } else if (selectorCapa < 0.80) {
+                    this.rol = 'cuerpo';
+                    this.x = (this.canvasW * 0.50) + (Math.random() - 0.5) * (this.canvasW * 0.44);
+                    this.y = this.canvasH - 22;
+                    this.vy = -(Math.random() * 1.6 + 1.1);
+                    this.vx = (Math.random() * 0.4 - 0.20);
+                    this.baseWidth = Math.random() * 12 + 6;
+                    this.decay = Math.random() * 0.018 + 0.012;
+                } else {
+                    this.rol = 'punta';
+                    this.x = (this.canvasW * 0.34) + Math.random() * (this.canvasW * 0.32);
+                    this.y = this.canvasH - 26;
+                    this.vy = -(Math.random() * 1.8 + 1.2); 
+                    this.vx = (Math.random() * 0.4 - 0.20);
+                    this.baseWidth = Math.random() * 8 + 4;
+                    this.decay = Math.random() * 0.025 + 0.018;
+                }
+
+                if (this.actor === "hero") { this.baseWidth *= 1.25; this.vy *= 0.85; this.decay *= 0.65; }
+                else if (this.actor === "support") { this.baseWidth *= 1.1; this.vy *= 0.90; this.decay *= 0.80; }
+
+                this.life = 1.0;
+            }
+
+            update() {
+                const windPower = factorVientoVisual || 0.3;
+                const microCaos = (Math.random() * 2 - 1) * (this.rol === 'punta' ? 1.2 : 0.4);
+                this.x += this.vx + (windPower * 1.8) + microCaos;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+
+            draw() {
+                const currentCanvas = document.getElementById('fireCanvasModular');
+                if (!currentCanvas || this.life <= 0) return;
+                const canvasCtx = currentCanvas.getContext('2d');
+
+                const posVal = window.colorInterpolado !== undefined ? window.colorInterpolado : 2.0;
+                const b = nivelBrilloVisual || 0.8;
+
+                if (window.tvPixelMode) {
+                    const tamGrid = 6;
+                    const posX = Math.floor(this.x / tamGrid) * tamGrid;
+                    const posY = Math.floor(this.y / tamGrid) * tamGrid;
+                    const anchoPx = Math.max(tamGrid, Math.floor((this.baseWidth * this.life * 1.2) / tamGrid) * tamGrid);
+                    const altoPx  = Math.floor((anchoPx * 2.2) / tamGrid) * tamGrid;
+
+                    let colorBase = '#fffaaa', colorCuerpo = '#ff6600', colorPunta = '#cc1100';
+                    if (posVal <= 2.0) { colorBase = '#ffa3a3'; colorCuerpo = '#ff2200'; colorPunta = '#880000'; }
+                    else if (posVal >= 3.0) { colorBase = '#ffffff'; colorCuerpo = '#00aaff'; colorPunta = '#002288'; }
+
+                    canvasCtx.save();
+                    canvasCtx.globalCompositeOperation = 'screen';
+                    canvasCtx.fillStyle = colorBase;
+                    canvasCtx.fillRect(posX, posY + (altoPx * 0.5), anchoPx, altoPx * 0.5);
+                    canvasCtx.fillStyle = colorCuerpo;
+                    canvasCtx.fillRect(posX, posY + (altoPx * 0.25), anchoPx, altoPx * 0.5);
+                    canvasCtx.fillStyle = colorPunta;
+                    canvasCtx.fillRect(posX, posY, Math.max(tamGrid, anchoPx - tamGrid), altoPx * 0.3);
+                    canvasCtx.restore();
+                } else {
+                    canvasCtx.save();
+                    canvasCtx.globalCompositeOperation = 'screen';
+
+                    let colorCore, colorBody, colorEdge;
+                    if (posVal <= 2.0) {
+                        const t = posVal - 1.0;
+                        colorCore = `rgba(255, ${Math.round(235 + 20 * t)}, ${Math.round(220 + 20 * t)}, ${this.life * b})`;
+                        colorBody = `rgba(${Math.round(240 + 15 * t)}, ${Math.round(50 + 80 * t)}, ${Math.round(20 * (1 - t))}, ${this.life * b * 0.75})`;
+                        colorEdge = `rgba(${Math.round(120 + 60 * t)}, ${Math.round(30 * t)}, 0, 0)`;
+                    } else {
+                        const t = posVal - 2.0;
+                        colorCore = `rgba(${Math.round(255 - 35 * t)}, ${Math.round(255 - 10 * t)}, ${Math.round(240 + 15 * t)}, ${this.life * b})`;
+                        colorBody = `rgba(${Math.round(255 * (1 - t))}, 130, ${Math.round(255 * t)}, ${this.life * b * 0.8})`;
+                        colorEdge = `rgba(${Math.round(180 * (1 - t))}, ${Math.round(20 * (1 - t))}, ${Math.round(120 * t)}, 0)`;
+                    }
+
+                    let radioX = Math.max(1.0, this.baseWidth * this.life * 0.6);
+                    let radioY = radioX * 3.4;
+
+                    const gradient = canvasCtx.createRadialGradient(0, 0, 0, 0, 0, radioY);
+                    gradient.addColorStop(0, colorCore);
+                    gradient.addColorStop(0.25, colorBody);
+                    gradient.addColorStop(1, colorEdge);
+
+                    canvasCtx.translate(this.x, this.y);
+                    canvasCtx.scale(radioX / radioY, 1.0);
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(0, 0, radioY, 0, Math.PI * 2);
+                    canvasCtx.fillStyle = gradient;
+                    canvasCtx.fill();
+                    canvasCtx.restore();
+                }
+            }
+        }
+
+        // ─── LAZO DE ANIMACIÓN CON RASTRO DE SEDA ───
+        function animate() {
+            const canvasModular = document.getElementById('fireCanvasModular');
+            if (!canvasModular) return;
+            const canvasCtx = canvasModular.getContext('2d');
+
+            canvasCtx.save();
+            canvasCtx.globalCompositeOperation = 'destination-out';
+            canvasCtx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+            canvasCtx.fillRect(0, 0, canvasModular.width, canvasModular.height);
+            canvasCtx.restore();
+
+            if (particles.length < 110) {
+                particles.push(new FireParticle());
+                particles.push(new FireParticle());
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            animFrameId = requestAnimationFrame(animate);
+        }
+
+        function resize() {
+            canvas.width  = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+
+        let qrcodeObj = null;
+
+function generarCodigo() {
+    const caracteres = 'ABC123456789';
+    let resultado = '';
+    for (let i = 0; i < 5; i++) {
+        resultado += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
+    }
+    codigoActual = resultado;
+    document.getElementById('code-display').innerText = codigoActual;
+
+    const containerQR = document.getElementById('qr-container');
+    containerQR.innerHTML = ''; // Limpiar previo
+
+    qrcodeObj = new QRCode(containerQR, {
+        text: `https://tu-app-aura.com/vincular?code=${codigoActual}`, // o la URL que recibe tu móvil
+        width: 260,
+        height: 260,
+        colorDark : "#050505",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+
+    conectarCanalSupabase(codigoActual);
+}
+
+        function conectarCanalSupabase(codigo) {
+            if (canalControl) { supabaseClient.removeChannel(canalControl); }
+
+            canalControl = supabaseClient.channel(`aura_${codigo}`);
+
+            canalControl.on('broadcast', { event: 'orden' }, (clase) => {
+                if (!clase.payload) return;
+
+                if (clase.payload.tipo === 'AURA_HANDSHAKE_PING') {
+                    canalControl.send({
+                        type:    'broadcast',
+                        event:   'orden',
+                        payload: { 
+                            tipo: 'AURA_HANDSHAKE_PONG', 
+                            valor: Date.now(),
+                            nombreTv: `AURA TV ${codigoActual}` 
+                        }
+                    });
+                    return;
+                }
+                
+                if (clase.payload.tipo === 'AURA_HANDSHAKE_PONG') return;
+
+                procesarOrdenRemota(clase.payload);
+            });
+
+            canalControl.subscribe((status) => {
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                   desactivarModoAmbiente ();
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            generarCodigo();
+
+            document.body.addEventListener('click', () => {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            });
+        });
+    </script>
+</body>
+</html>

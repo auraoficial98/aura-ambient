@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aura - Dashboard Sensorial</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght=300;500;600&family=Lato:wght=300;400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #d4af37;
+            --dark: #050505;
+            --panel-bg: rgba(12, 12, 14, 0.96);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            background-color: var(--dark);
+            font-family: 'Lato', sans-serif;
+            color: white; overflow: hidden;
+            user-select: none;
+        }
+
+        #fireCanvas {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 1;
+            background: radial-gradient(circle at bottom, #140b03 0%, #050505 80%);
+            transition: opacity 0.8s ease;
+        }
+
+        #fireCanvas.remote-mode {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #fachada-tip {
+            position: fixed; top: 30px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+            font-family: 'Urbanist', sans-serif;
+            font-size: 10px; letter-spacing: 3px;
+            color: rgba(212, 175, 55, 0.4);
+            text-transform: uppercase;
+            pointer-events: none;
+            opacity: 0; transition: opacity 0.8s ease;
+            text-align: center; width: 100%;
+        }
+
+        #welcome-screen {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1000;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: radial-gradient(circle at center, rgba(5,5,5,0.1) 0%, #050505 100%);
+            transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), visibility 1.2s;
+            padding: 0 24px;
+        }
+
+        #welcome-screen h1 {
+            font-family: 'Urbanist', sans-serif;
+            font-size: 36px; letter-spacing: 18px;
+            font-weight: 300; color: var(--gold);
+            margin-bottom: 40px; padding-left: 18px;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+            text-align: center; white-space: nowrap;
+        }
+
+        .btn-power {
+            background: transparent;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            color: white; padding: 18px 36px;
+            border-radius: 30px; cursor: pointer;
+            font-family: 'Urbanist', sans-serif;
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 4px; text-transform: uppercase;
+            transition: all 0.4s ease;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.05);
+            white-space: nowrap;
+        }
+
+        .btn-power:hover {
+            background: rgba(212, 175, 55, 0.1);
+            border-color: var(--gold);
+            box-shadow: 0 0 25px rgba(212, 175, 55, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .ui-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 10;
+            display: flex; flex-direction: column;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0; pointer-events: none;
+        }
+
+        .fire-zone {
+    position: relative;
+    width: 100%;
+    height: 48vh;
+    min-height: 280px;
+    max-height: 420px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+        .fire-zone.remote-mode {
+            height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            width: 100%;
+            height: 40px;
+        }
+
+        .header h1 {
+            font-family: 'Urbanist', sans-serif;
+            font-size: 24px; letter-spacing: 12px;
+            font-weight: 300; margin: 0; color: var(--gold);
+            position: absolute; left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            padding-left: 12px;
+            pointer-events: none;
+            white-space: nowrap;
+            display: none; /* Oculta el logo flotante duplicado superior */
+        }
+
+        .config-btn, .tv-btn {
+            background: none; border: none; cursor: pointer;
+            padding: 10px;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 20;
+            color: rgba(255, 255, 255, 0.4);
+            transition: color 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .config-btn svg { width: 18px; height: 18px; transition: transform 0.5s ease; }
+        .tv-btn svg { width: 18px; height: 18px; transform: scale(1.2); transition: transform 0.3s ease; }
+        .config-btn:hover { color: var(--gold); }
+        .config-btn:hover svg { transform: rotate(90deg); }
+        .tv-btn:hover { color: var(--gold); }
+        .tv-btn:hover svg { transform: scale(1.3); }
+
+        #expand-fachada-btn {
+            position: absolute; bottom: 15px; right: 25px;
+            background: none; border: none;
+            color: rgba(255,255,255,0.4); cursor: pointer;
+            padding: 8px; display: flex;
+            align-items: center; justify-content: center;
+            transition: color 0.3s ease, transform 0.2s ease;
+            z-index: 25; outline: none;
+        }
+
+        #expand-fachada-btn:hover { color: var(--gold); }
+
+        .controls-zone {
+            flex: 1;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            background: var(--panel-bg);
+            border-top: 1px solid rgba(212, 175, 55, 0.12);
+            padding: 20px 20px 24px 20px;
+            overflow: hidden;
+            transition: flex 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .controls-zone.remote-mode {
+            border-top: none;
+            padding-top: 50px;
+        }
+
+        #remote-header {
+            display: none;
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 54px;
+            z-index: 100;
+            background: var(--panel-bg);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.12);
+            align-items: center; justify-content: space-between;
+            padding: 0 16px;
+        }
+
+        #remote-header.visible { display: flex; }
+
+        #remote-header h1 {
+            font-family: 'Urbanist', sans-serif;
+            font-size: 18px; letter-spacing: 10px;
+            font-weight: 300; color: var(--gold);
+            position: absolute; left: 50%; top: 50%;
+            transform: translate(-50%, -50%);
+            padding-left: 10px;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .remote-badge {
+            font-family: 'Urbanist', sans-serif;
+            font-size: 9px; letter-spacing: 2px;
+            color: var(--gold); opacity: 0.8;
+            text-transform: uppercase;
+            display: flex; align-items: center; gap: 5px;
+        }
+
+        #remote-header .remote-badge::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: var(--gold);
+            border-radius: 50%;
+            box-shadow: 0 0 6px rgba(212,175,55,0.8);
+            animation: pulse 2s infinite !important;
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body.aura-led-connected #remote-header .remote-badge::before {
+            animation: none !important;
+            opacity: 1 !important;
+        }
+
+        body.aura-led-disconnected #remote-header .remote-badge::before {
+            animation: none !important;
+            background: #555555 !important;
+            box-shadow: none !important;
+            opacity: 0.6 !important;
+        }
+
+        #remote-header .remote-badge {
+            color: var(--gold);
+            transition: color 0.3s ease;
+        }
+        body.aura-led-disconnected #remote-header .remote-badge {
+            color: #555555 !important;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    /* ─── ANIMACIÓN DE RESPIRACIÓN TÉRMICA EN LA LEÑA (ADAPTATIVA AL COLOR) ─── */
+/* ─── RESPIRACIÓN DE LA LEÑA SEGÚN TONALIDAD ─── */
+/* 🟠 MODO NARANJA (POR DEFECTO) */
+@keyframes respiracionLeñaNaranja {
+    0%, 100% {
+        filter: brightness(0.95) contrast(1.1) drop-shadow(0px 0px 8px rgba(255, 90, 0, calc(0.35 * var(--brillo-usuario, 0.8))));
+        opacity: 0.85;
+    }
+    50% {
+        filter: brightness(1.15) contrast(1.25) drop-shadow(0px 0px 22px rgba(255, 120, 0, calc(0.65 * var(--brillo-usuario, 0.8))));
+        opacity: 1.0;
+    }
+}
+
+/* 🔴 MODO ROJO */
+@keyframes respiracionLeñaRojo {
+    0%, 100% {
+        filter: hue-rotate(-20deg) saturate(2.5) brightness(1.0) contrast(1.2) drop-shadow(0px 0px 8px rgba(255, 30, 0, calc(0.3 * var(--brillo-usuario, 0.8))));
+        opacity: 0.88;
+    }
+    50% {
+        filter: hue-rotate(-20deg) saturate(2.5) brightness(1.2) contrast(1.3) drop-shadow(0px 0px 20px rgba(255, 50, 0, calc(0.6 * var(--brillo-usuario, 0.8))));
+        opacity: 1.0;
+    }
+}
+
+/* 🔵 MODO AZUL */
+@keyframes respiracionLeñaAzul {
+    0%, 100% {
+        filter: hue-rotate(190deg) saturate(3.5) brightness(1.1) contrast(1.3) drop-shadow(0px 0px 8px rgba(0, 120, 255, calc(0.4 * var(--brillo-usuario, 0.8))));
+        opacity: 0.88;
+    }
+    50% {
+        filter: hue-rotate(190deg) saturate(3.5) brightness(1.3) contrast(1.4) drop-shadow(0px 0px 20px rgba(0, 160, 255, calc(0.7 * var(--brillo-usuario, 0.8))));
+        opacity: 1.0;
+    }
+}
+
+/* Clases de activación para la leña */
+#capa-leña-incandescente.modo-naranja {
+    animation: respiracionLeñaNaranja 3.8s infinite ease-in-out !important;
+}
+
+#capa-leña-incandescente.modo-rojo {
+    animation: respiracionLeñaRojo 3.8s infinite ease-in-out !important;
+}
+
+#capa-leña-incandescente.modo-azul {
+    animation: respiracionLeñaAzul 3.8s infinite ease-in-out !important;
+}
+
+/* Activación automática al estar la chimenea encendida */
+body:not(.welcome-active) #capa-leña-incandescente {
+    animation: respiracionLeñaIncandescente 3.8s infinite ease-in-out;
+}
+
+        .capsules-container {
+            display: flex; justify-content: space-around;
+            align-items: flex-end;
+            height: 190px; width: 100%;
+        }
+
+        .capsule-wrapper {
+            display: flex; flex-direction: column;
+            align-items: center;
+            height: 100%;
+            min-width: 0; flex: 1; max-width: 80px;
+        }
+
+        .slider-box {
+            position: relative; width: 30px; height: 125px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            border-radius: 15px; overflow: hidden;
+            display: flex; justify-content: center;
+        }
+
+        input[type=range].vertical-slider {
+            -webkit-appearance: none; appearance: none;
+            transform: rotate(-90deg);
+            width: 125px; height: 30px;
+            background: transparent;
+            position: absolute; top: 47px;
+            margin: 0; cursor: pointer; outline: none;
+        }
+
+        input[type=range].vertical-slider::-webkit-slider-runnable-track {
+            width: 100%; height: 30px; background: transparent;
+        }
+
+        input[type=range].vertical-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none;
+            width: 8px; height: 30px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(5px);
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .slider-fill {
+            position: absolute; bottom: 0; left: 0; width: 100%;
+            background: linear-gradient(to top, rgba(212, 175, 55, 0.2), var(--gold));
+            pointer-events: none;
+            border-radius: 0 0 15px 15px;
+            transition: height 0.05s linear;
+        }
+
+        .capsule-value {
+            font-size: 10px; font-family: 'Urbanist', sans-serif;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 5px; letter-spacing: 1px;
+        }
+
+        .capsule-footer-btn {
+            background: none; border: none;
+            margin-top: 10px; cursor: pointer;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 6px;
+            color: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease; outline: none; padding: 0;
+        }
+
+        .capsule-footer-btn svg { width: 18px; height: 18px; transition: transform 0.3s ease; }
+        .capsule-footer-btn span { font-size: 8px; font-family: 'Urbanist', sans-serif; letter-spacing: 1.5px; text-transform: uppercase; }
+        .capsule-footer-btn.active { color: var(--gold); text-shadow: 0 0 10px rgba(212, 175, 55, 0.3); }
+        .capsule-footer-btn.active svg { transform: scale(1.05); }
+
+        .capsule-footer-info {
+            margin-top: 10px;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 6px;
+            color: rgba(255, 255, 255, 0.6); padding: 0;
+        }
+
+        .capsule-footer-info svg { width: 18px; height: 18px; color: var(--gold); }
+        .capsule-footer-info span { font-size: 8px; font-family: 'Urbanist', sans-serif; letter-spacing: 1.5px; }
+
+        .btn-action {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            color: white; padding: 16px; border-radius: 20px;
+            cursor: pointer; font-family: 'Urbanist', sans-serif;
+            font-size: 11px; font-weight: 600;
+            letter-spacing: 2px; transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-action:hover { background: rgba(212, 175, 55, 0.1); border-color: var(--gold); }
+
+        .drawer-backdrop {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0);
+            backdrop-filter: blur(0px);
+            z-index: 9999; display: none;
+            transition: background 0.4s ease, backdrop-filter 0.4s ease;
+        }
+
+        .drawer-backdrop.active {
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+
+        .side-drawer {
+            position: fixed; top: 0; left: 0;
+            width: 320px; height: 100%;
+            background: transparent;
+            border-right: none;
+            padding: 0;
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+
+        .side-drawer.active { transform: translateX(0); }
+
+        .aura-sidebar {
+            --bg: #050505;
+            --gold-border: rgba(212, 175, 55, 0.25);
+            --gold-text: rgba(212, 175, 55, 0.85);
+            --fg: #e8e8e8;
+            --muted: rgba(232, 232, 232, 0.55);
+            --danger: #ff6b6b;
+
+            width: 100%; height: 100%; background: var(--bg);
+            color: var(--fg); font-family: 'Urbanist', sans-serif;
+            font-weight: 300; padding: 28px 22px; box-sizing: border-box;
+            display: flex; flex-direction: column; gap: 4px;
+            letter-spacing: 0.02em; overflow-y: auto;
+            border-right: 1px solid rgba(212, 175, 55, 0.15);
+        }
+
+        .aura-section { display: flex; flex-direction: column; gap: 12px; padding: 14px 0; }
+        .aura-section-title { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.24em; color: var(--muted); margin: 0 0 6px; }
+        .aura-divider { height: 1px; background: rgba(212, 175, 55, 0.25); opacity: 0.6; flex-shrink: 0; }
+        .aura-email { margin: 0; font-size: 14px; color: var(--fg); }
+        .aura-id { margin: 0; font-size: 12px; color: var(--muted); letter-spacing: 0.08em; }
+        
+        .aura-badge {
+            align-self: flex-start; font-size: 10px; font-weight: 600;
+            letter-spacing: 0.2em; color: var(--gold-text);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            padding: 4px 10px; border-radius: 2px;
+        }
+
+        .aura-link {
+            font-size: 12px; color: var(--muted); text-decoration: none;
+            border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+            align-self: flex-start; padding-bottom: 2px;
+            transition: color 0.2s ease;
+        }
+
+        .aura-link:hover { color: var(--gold-text); }
+        .aura-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .aura-row-stack { flex-direction: column; align-items: stretch; gap: 8px; }
+        .aura-label { font-size: 13px; color: var(--fg); }
+
+        .aura-switch { position: relative; display: inline-block; width: 34px; height: 18px; flex-shrink: 0; }
+        .aura-switch input { opacity: 0; width: 0; height: 0; }
+        .aura-slider-toggle {
+            position: absolute; inset: 0; background: transparent;
+            border: 1px solid rgba(212, 175, 55, 0.25); border-radius: 20px;
+            cursor: pointer; transition: background 0.2s ease;
+        }
+        .aura-slider-toggle::before {
+            content: ''; position: absolute; width: 10px; height: 10px;
+            left: 3px; top: 50%; transform: translateY(-50%);
+            background: var(--muted); border-radius: 50%; transition: all 0.2s ease;
+        }
+        .aura-switch input:checked + .aura-slider-toggle { background: rgba(212, 175, 55, 0.25); }
+        .aura-switch input:checked + .aura-slider-toggle::before { left: 19px; background: var(--gold-text); }
+
+        .aura-select {
+            appearance: none; -webkit-appearance: none; background: transparent;
+            color: var(--fg); border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 2px; padding: 8px 28px 8px 10px;
+            font-family: inherit; font-size: 12px; letter-spacing: 0.04em; cursor: pointer;
+            background-image: linear-gradient(45deg, transparent 50%, rgba(212,175,55,0.6) 50%),
+                              linear-gradient(135deg, rgba(212,175,55,0.6) 50%, transparent 50%);
+            background-position: calc(100% - 14px) center, calc(100% - 9px) center;
+            background-size: 5px 5px; background-repeat: no-repeat;
+        }
+        .aura-select:focus { outline: none; border-color: var(--gold-text); }
+        .aura-select option { background: #050505; color: var(--fg); }
+
+        .aura-status { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--fg); }
+        .aura-dot { width: 7px; height: 7px; border-radius: 50%; background: #3ddc84; flex-shrink: 0; box-shadow: 0 0 6px rgba(61, 220, 132, 0.6); }
+        .aura-status-text { letter-spacing: 0.04em; }
+
+        .aura-egress { margin-top: auto; gap: 10px; padding-top: 24px; }
+        .aura-btn {
+            width: 100%; background: transparent; color: var(--fg);
+            border: 1px solid rgba(212, 175, 55, 0.25); padding: 12px 14px;
+            font-family: inherit; font-size: 12px; font-weight: 400;
+            letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer;
+            border-radius: 2px; transition: border-color 0.2s ease, color 0.2s ease;
+        }
+        .aura-btn:hover { border-color: var(--gold-text); color: var(--gold-text); }
+        .aura-btn-danger { color: var(--danger); border-color: rgba(255, 107, 107, 0.35); }
+        .aura-btn-danger:hover { color: var(--danger); border-color: var(--danger); }
+
+        #tv-linking-panel {
+            display: none; flex-direction: column; align-items: center;
+            gap: 16px; padding: 24px 16px; background: rgba(0,0,0,0.95);
+            border-radius: 24px; border: 1px solid rgba(212,175,55,0.3);
+            width: 92%; max-width: 360px; position: fixed;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 5000; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8); max-height: 95vh; overflow-y: auto;
+        }
+        #tv-linking-panel h2 { color: var(--gold); font-family: 'Urbanist', sans-serif; font-size: 16px; letter-spacing: 4px; margin: 0; font-weight: 600; }
+        #qr-reader-v2 { width: 100%; max-width: 200px; height: 200px; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid rgba(212, 175, 55, 0.3); }
+        #tv-linking-panel p { color: white; opacity: 0.5; margin: 0; font-size: 11px; letter-spacing: 1px; }
+        #manual-code-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(212,175,55,0.4); color: white; padding: 10px; border-radius: 8px; text-align: center; font-size: 1.3rem; width: 130px; outline: none; font-family: monospace; letter-spacing: 3px; transition: border-color 0.3s ease; }
+        #manual-code-input:focus { border-color: var(--gold); }
+        .btn-connect { width: 100%; background: var(--gold); color: black; font-weight: 700; padding: 13px; border-radius: 10px; border: none; cursor: pointer; font-family: 'Urbanist', sans-serif; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; transition: opacity 0.2s ease; }
+        .btn-connect:hover { opacity: 0.88; }
+        .btn-connect:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-cancel-tv { background: none; border: none; color: rgba(255,255,255,0.45); font-size: 11px; letter-spacing: 1px; cursor: pointer; text-decoration: underline; font-family: 'Urbanist', sans-serif; }
+
+        @keyframes auraProShake {
+            0%, 100% { transform: translateX(0) rotate(0deg); }
+            15% { transform: translateX(-4px) rotate(-4deg); }
+            30% { transform: translateX(4px) rotate(4deg); }
+            45% { transform: translateX(-3px) rotate(-3deg); }
+            60% { transform: translateX(3px) rotate(3deg); }
+            75% { transform: translateX(-2px) rotate(-2deg); }
+            90% { transform: translateX(2px) rotate(2deg); }
+        }
+        @keyframes auraProGlow {
+            0%, 100% { box-shadow: 0 0px 0px rgba(212, 175, 55, 0); }
+            40% { box-shadow: 0 0 18px rgba(212, 175, 55, 0.5); }
+        }
+        .aura-pro-shake { animation: auraProShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards, auraProGlow 0.45s ease forwards; }
+
+        @media (max-width: 390px) {
+            .header h1 { font-size: 18px; letter-spacing: 6px; padding-left: 6px; }
+            #welcome-screen h1 { font-size: 28px; letter-spacing: 12px; padding-left: 12px; }
+            .controls-zone { padding: 16px 12px 20px 12px; }
+            .capsules-container { height: 170px; }
+            .slider-box { width: 26px; height: 110px; }
+            input[type=range].vertical-slider { width: 110px; top: 40px; }
+            .config-btn, .tv-btn { padding: 8px 6px; }
+            #qr-reader-v2 { max-width: 170px; height: 170px; }
+            #manual-code-input { width: 120px; font-size: 1.15rem; }
+            .side-drawer { width: 290px; }
+        }
+
+        .aura-modal {
+            background: rgba(12, 12, 14, 0.98);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 16px;
+            padding: 24px;
+            width: 85%;
+            max-width: 320px;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            font-family: 'Urbanist', sans-serif;
+        }
+
+        .aura-modal.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+
+        .aura-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            font-family: 'Lato', sans-serif;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .aura-input:focus { border-color: var(--gold); }
+        .aura-accordion { margin-bottom: 8px; border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 8px; overflow: hidden; background: rgba(5, 5, 5, 0.4); }
+        .aura-accordion-header {
+            padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; font-size: 10px; font-weight: 600; letter-spacing: 2px;
+            color: var(--gold-text); text-transform: uppercase; transition: background 0.3s ease;
+        }
+        .aura-accordion-header:hover { background: rgba(212, 175, 55, 0.08); }
+        .aura-accordion-header svg { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); color: rgba(212, 175, 55, 0.5); }
+        .aura-accordion-header.active svg { transform: rotate(180deg); color: var(--gold-text); }
+        
+        .aura-accordion-content {
+            max-height: 0; overflow: hidden; transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s ease;
+            background: transparent; padding: 0 16px;
+        }
+        .aura-accordion-content.active { max-height: 400px; padding: 4px 16px 16px 16px; }
+
+        body.aura-pixel-mode-active #fireCanvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        body.aura-pixel-mode-active .aura-sidebar,
+        body.aura-pixel-mode-active .aura-btn,
+        body.aura-pixel-mode-active .slider-box,
+        body.aura-pixel-mode-active .btn-power,
+        body.aura-pixel-mode-active .btn-connect,
+        body.aura-pixel-mode-active #qr-reader-v2,
+        body.aura-pixel-mode-active #manual-code-input,
+        body.aura-pixel-mode-active .modal-content, 
+        body.aura-pixel-mode-active .connect-modal { 
+            border-radius: 0px !important; 
+            animation: none !important; 
+            box-shadow: 4px 4px 0px rgba(212, 175, 55, 0.4) !important;
+            border: 2px solid rgba(212, 175, 55, 0.8) !important;
+        }
+
+        body.aura-pixel-mode-active span,
+        body.aura-pixel-mode-active label,
+        body.aura-pixel-mode-active svg,
+        body.aura-pixel-mode-active p,
+        body.aura-pixel-mode-active a,
+        body.aura-pixel-mode-active div:not(#fireCanvas), 
+        body.aura-pixel-mode-active .capsule-value {
+            image-rendering: auto !important;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .tv-list-row {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            border-radius: 6px; padding: 10px 12px; margin-bottom: 8px;
+            transition: border-color 0.3s ease, background 0.3s ease;
+        }
+        .tv-list-row.active-tv {
+            border-color: rgba(61, 220, 132, 0.3);
+            background: rgba(61, 220, 132, 0.05);
+        }
+        .tv-list-info {
+            display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1;
+        }
+        .tv-list-dot {
+            width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; transition: all 0.3s ease;
+        }
+        .tv-list-name {
+            font-size: 11px; font-weight: 600; color: var(--fg); letter-spacing: 1px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;
+        }
+        .tv-list-actions {
+            display: flex; align-items: center; gap: 8px;
+        }
+        .tv-list-btn {
+            background: transparent; border: none; padding: 4px 6px;
+            font-family: 'Urbanist', sans-serif; font-size: 9px; font-weight: 600;
+            letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+            color: rgba(255, 255, 255, 0.45); transition: color 0.2s ease; outline: none;
+        }
+        .tv-list-btn:hover { color: var(--gold); }
+        .tv-list-delete {
+            color: rgba(255, 107, 107, 0.45); padding: 4px; display: flex; align-items: center;
+        }
+        .tv-list-delete:hover { color: rgba(255, 107, 107, 0.9); }
+        .tv-list-delete svg { width: 14px; height: 14px; }
+
+       /* ─── ENTORNO PREMIUM: FACHADA REACTIVA Y FLUIDA ─── */
+        .fachada-viva {
+            filter: contrast(1.1) brightness(0.9) drop-shadow(0px 15px 20px rgba(0, 0, 0, 0.9));
+        }
+
+        /* Cuando el espacio se enciende, el chasis activa el parpadeo térmico y el movimiento de fluidos */
+        body:not(.welcome-active) .fachada-viva[style*="opacity: 1"] {
+            animation: parpadeoFuegoEcosistema 4s infinite ease-in-out, fluidosVivosYouTube 5s infinite linear;
+        }
+
+        /* Sincronización de Luz y Sombras Doradas en la Leña */
+        @keyframes parpadeoFuegoEcosistema {
+            0%, 100% {
+                filter: contrast(1.1) brightness(0.85) drop-shadow(0px 15px 25px rgba(212, 175, 55, 0.03));
+            }
+            30% {
+                filter: contrast(1.15) brightness(1.04) drop-shadow(0px 15px 35px rgba(212, 175, 55, 0.08));
+            }
+            70% {
+                filter: contrast(1.1) brightness(0.92) drop-shadow(0px 15px 20px rgba(212, 175, 55, 0.04));
+            }
+        }
+
+        /* Vinculación síncrona con el filtro matemático de distorsión de calor */
+        @keyframes fluidosVivosYouTube {
+            0% {
+                filter: contrast(1.15) brightness(0.95) url(#distorsion-calor-real);
+            }
+            50% {
+                filter: contrast(1.12) brightness(1.02) url(#distorsion-calor-real);
+            }
+            100% {
+                filter: contrast(1.15) brightness(0.95) url(#distorsion-calor-real);
+            }
+            
+        }
+        /* ─── 🪐 ANIMACIONES DE REFLEJO TÉRMICO AURA (PROCESADO POR GPU) ─── */
+@keyframes parpadeo-fuego-naranja {
+    0%, 100% { 
+        filter: drop-shadow(0px 0px calc(15px * var(--brillo-usuario, 0.8)) rgba(255, 95, 0, calc(0.25 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.7 + (0.3 * var(--brillo-usuario, 0.8)))); 
+    }
+    33% { 
+        filter: drop-shadow(0px 0px calc(25px * var(--brillo-usuario, 0.8)) rgba(255, 60, 0, calc(0.4 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.7 + (0.35 * var(--brillo-usuario, 0.8)))); 
+    }
+    66% { 
+        filter: drop-shadow(0px 0px calc(12px * var(--brillo-usuario, 0.8)) rgba(255, 130, 0, calc(0.2 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.7 + (0.26 * var(--brillo-usuario, 0.8)))); 
+    }
+}
+
+@keyframes parpadeo-fuego-rojo {
+    0%, 100% { 
+        filter: drop-shadow(0px 0px calc(15px * var(--brillo-usuario, 0.8)) rgba(230, 20, 20, calc(0.25 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.4 + (0.6 * var(--brillo-usuario, 0.8)))); 
+    }
+    33% { 
+        filter: drop-shadow(0px 0px calc(25px * var(--brillo-usuario, 0.8)) rgba(255, 10, 10, calc(0.4 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.4 + (0.68 * var(--brillo-usuario, 0.8)))); 
+    }
+    66% { 
+        filter: drop-shadow(0px 0px calc(12px * var(--brillo-usuario, 0.8)) rgba(180, 0, 0, calc(0.2 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.4 + (0.55 * var(--brillo-usuario, 0.8)))); 
+    }
+}
+
+@keyframes parpadeo-fuego-azul {
+    0%, 100% { 
+        filter: drop-shadow(0px 0px calc(15px * var(--brillo-usuario, 0.8)) rgba(0, 90, 255, calc(0.25 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.4 + (0.55 * var(--brillo-usuario, 0.8)))); 
+    }
+    33% { 
+        filter: drop-shadow(0px 0px calc(25px * var(--brillo-usuario, 0.8)) rgba(0, 160, 255, calc(0.45 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.4 + (0.64 * var(--brillo-usuario, 0.8)))); 
+    }
+    66% { 
+        filter: drop-shadow(0px 0px calc(12px * var(--brillo-usuario, 0.8)) rgba(0, 40, 180, calc(0.2 * var(--brillo-usuario, 0.8)))) 
+                brightness(calc(0.4 + (0.52 * var(--brillo-usuario, 0.8)))); 
+    }
+}
+
+/* Clase utilitaria para activar el reflejo en el chasis */
+.glow-ambiente-activo {
+    transition: filter 0.5s ease;
+}
+/* 👾 MODO PIXEL ART: RENDERIZADO DEDICADO Y LIMPIO */
+body.aura-pixel-mode-active #img-leña-pixel {
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
+}
+
+body.aura-pixel-mode-active #fireCanvasModular {
+    image-rendering: pixelated !important;
+    image-rendering: crisp-edges !important;
+}
+
+/* Garantizar que el Dock inferior se mantenga visible y funcional en Modo Remoto */
+.controls-zone.remote-mode #aura-dock-bottom {
+    display: grid !important;
+    position: relative !important;
+    z-index: 100 !important;
+    margin-top: 25px !important;
+    width: 100% !important;
+    max-width: 360px !important;
+}
+
+/* ─── AJUSTE DEL DOCK INFERIOR (MÁS ELEVADO Y VISIBLE) ─── */
+.controls-zone {
+    padding-bottom: 35px !important; /* Da espacio libre abajo para elevar los botones */
+}
+
+#aura-dock-bottom {
+    margin-top: 15px !important;
+    margin-bottom: 10px !important;
+}
+
+/* ─── ADAPTACIÓN PARA MODO HORIZONTAL (LANDSCAPE) ─── */
+@media (orientation: landscape) {
+    .fire-zone {
+        height: 55vh !important;
+        min-height: 200px !important;
+    }
+
+    #contenedor-chimenea-modular {
+        transform: translateY(10px) scale(0.85) !important; /* Escala suave para no chocar arriba/abajo */
+    }
+
+    .controls-zone {
+        padding: 10px 20px 20px 20px !important;
+        overflow-y: auto !important; /* Permite desplazamiento suave si la pantalla es muy angosta */
+    }
+
+    .capsules-container {
+        height: 140px !important;
+    }
+
+    .slider-box {
+        height: 90px !important;
+    }
+
+    input[type=range].vertical-slider {
+        width: 90px !important;
+        top: 30px !important;
+    }
+
+    #aura-dock-bottom {
+        margin-top: 10px !important;
+        max-width: 480px !important;
+    }
+}
+/* ─── 1. ÁREA SEGURA PARA BOTONES INFERIORES Y NAVEGACIÓN DOCK ─── */
+.controls-zone {
+    padding-bottom: max(28px, env(safe-area-inset-bottom)) !important;
+    padding-top: 10px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+}
+
+#aura-dock-bottom {
+    margin-top: 10px !important;
+    margin-bottom: max(12px, env(safe-area-inset-bottom)) !important;
+}
+
+/* ─── POSICIONAMIENTO Y ASENTAMIENTO DE LEÑA EN EL MARCO ─── */
+
+/* Leña Fotorrealista Normal (Asentada en el borde inferior) */
+#img-leña-real {
+    display: block !important;
+    opacity: 1 !important;
+    transform: translateY(8px) !important; /* Baja la leña para que toque el marco */
+}
+
+/* Ocultar leña normal en Modo Pixel Art */
+body.aura-pixel-mode-active #img-leña-real {
+    display: none !important;
+    opacity: 0 !important;
+}
+
+/* Leña Pixel Art (Solo activa en su modo) */
+#img-leña-pixel {
+    display: none;
+    opacity: 0;
+}
+
+body.aura-pixel-mode-active #img-leña-pixel {
+    display: block !important;
+    opacity: 1 !important;
+    transform: scale(0.88) translateY(-4px) !important; /* Mantiene la leña Pixel oculta en sus bordes */
+}
+/* ─── 3. MODO HORIZONTAL RESPONSIVO (LANDSCAPE) ─── */
+@media screen and (orientation: landscape) {
+    html, body {
+        height: 100vh !important;
+        height: 100svh !important;
+        overflow: hidden !important;
+    }
+
+    /* Reducción y encuadre del marco en horizontal */
+    #contenedor-chimenea-modular {
+        height: 200px !important;
+        transform: translateY(10px) scale(0.85) !important;
+    }
+
+    .fire-zone {
+        height: 50vh !important;
+        min-height: 180px !important;
+    }
+
+    /* Ajuste de controles en horizontal */
+    .controls-zone {
+        padding: 8px 16px max(10px, env(safe-area-inset-bottom)) 16px !important;
+        overflow-y: auto !important;
+    }
+
+    #color-segment-container {
+        margin-bottom: 10px !important;
+    }
+
+    .capsules-container {
+        height: 130px !important;
+    }
+
+    .slider-box {
+        height: 85px !important;
+    }
+
+    input[type=range].vertical-slider {
+        width: 85px !important;
+        top: 28px !important;
+    }
+
+    #aura-dock-bottom {
+        margin-top: 8px !important;
+    }
+}
+
+/* ─── ENCUADRE Y MÁSCARA PERFECTA DEL CANVAS DE FUEGO ─── */
+#fireCanvasModular {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -52%) !important;
+    width: 82% !important;
+    height: 72% !important;
+    z-index: 7 !important;
+    pointer-events: none !important;
+    mix-blend-mode: screen !important;
+    filter: blur(1px) contrast(2.2) url(#distorsion-calor-aura) !important;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%) !important;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%) !important;
+}
+
+/* En Modo Pixel Art se retira el desenfoque térmico para bordes limpios */
+body.aura-pixel-mode-active #fireCanvasModular {
+    filter: none !important;
+}
+
+/* ─── MODO FACHADA INMERSIVA OPTIMIZADA ─── */
+body.modo-fachada-activo #contenedor-chimenea-modular {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 98vw !important;
+    max-width: 1000px !important;
+    height: 90vh !important;
+    transform: translate(-50%, -50%) scale(1.1) !important;
+    z-index: 9999 !important;
+    margin: 0 !important;
+}
+
+/* Agrandar la leña para llenar la chimenea en modo expandido */
+body.modo-fachada-activo #img-leña-real {
+    width: 80% !important;
+    max-width: 400px !important;
+    margin-bottom: 2px !important;
+    transform: translateY(2px) !important;
+}
+
+body.modo-fachada-activo.aura-pixel-mode-active #img-leña-pixel {
+    width: 80% !important;
+    max-width: 400px !important;
+    margin-bottom: 4px !important;
+    transform: scale(0.92) translateY(0px) !important;
+}
+/* BAJAR LEÑA REAL AL EXPANDIR EN MODO HORIZONTAL */
+@media screen and (orientation: landscape) {
+    body.modo-fachada-activo #img-leña-real {
+        transform: translateY(38px) !important;
+    }
+}/* AGRANDAR LEÑA REAL EN MODO VERTICAL INICIAL */
+#img-leña-real {
+    width: 86% !important;        /* Aumentado de 72% a 86% para dar mayor presencia */
+    max-width: 380px !important;  /* Aumentado de 310px a 380px para pantallas más anchas */
+    transform: translateY(16px) !important; /* Mantiene el asentamiento en la base del marco */
+}
+
+    </style>
+</head>
+<body>
+
+    <!-- ─── CIRUGÍA AURA v12.2: CAPAS DE RENDERIZADO UNIFICADAS (CHASIS FIJO) ─── -->
+    <canvas id="fireCanvas"></canvas>
+      <!-- CHASSIS DE LA CHIMENEA MAESTRA COMPACTA (POSICIONAMIENTO RELATIVO CENTRADO) -->
+<!-- CHASSIS DE LA CHIMENEA MAESTRA COMPACTA (ELEVADO Y CENTRADO) -->
+<div id="contenedor-chimenea-modular" style="position: relative; width: 100%; max-width: 440px; height: 280px; margin: 0 auto; transform: translateY(40px); pointer-events: none; overflow: hidden; display: flex; align-items: center; justify-content: center;">      <!-- ───── AURA SIGNATURE : CAVERNOSA CALIDA DINÁMICA ───── -->
+<div id="capa-fondo-nicho" 
+     style="position: absolute; 
+            inset: 0; 
+            z-index: 6; 
+            transform: scale(0.82); 
+            opacity: 0; 
+            transition: opacity 1.2s ease, background 0.8s ease;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.95) 0%, transparent 25%), radial-gradient(circle at 50% 100%, rgba(180, 60, 10, calc(0.45 * var(--brillo-usuario, 0.8))) 0%, rgba(60, 20, 5, calc(0.25 * var(--brillo-usuario, 0.8))) 50%, rgba(0, 0, 0, 0.95) 85%);">
+</div>
+
+<canvas id="fireCanvasModular"></canvas>
+<div id="capa-leña-incandescente" style="position: absolute; inset: 0; z-index: 8; opacity: 1; transition: opacity 1.2s ease; display: flex; align-items: flex-end; justify-content: center; pointer-events: none;">
+    <!-- Leña Normal (Asentada en la base) -->
+    <img id="img-leña-real" src="leña-signature.png" style="width: 72%; max-width: 310px; height: auto; margin-bottom: 8px; position: relative; z-index: 8; display: block; opacity: 1; transition: opacity 0.3s ease; object-fit: contain;">
+    
+    <!-- Leña Pixel Art (Oculta por defecto, ajustada para encajar) -->
+    <img id="img-leña-pixel" src="leña-pixel.png" style="width: 72%; max-width: 310px; height: auto; margin-bottom: 22px; position: absolute; z-index: 8; display: none; opacity: 0; transition: opacity 0.3s ease; image-rendering: pixelated; object-fit: contain;">
+</div>
+
+        <div id="capa-marco-signature" 
+     style="position: absolute; inset: 0; background: url('marco-signature.png') center center / contain no-repeat; z-index: 10; opacity: 0.25; filter: brightness(0.4); transition: all 1.5s ease;">
+</div>
+        
+        <div id="reflejo-suelo-ambiental" style="position: absolute; bottom: -60px; left: 5%; width: 90%; height: 80px; background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.15), transparent 70%); z-index: 4; mix-blend-mode: screen; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;"></div>
+        
+    </div>
+    
+
+    
+
+    <div id="remote-header">
+        <button class="config-btn" id="config-trigger-remote" style="flex-shrink:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+        </button>
+        <h1>AURA</h1>
+        <div class="remote-badge">TV</div>
+    </div>
+
+    <div id="welcome-screen">
+        <h1>AURA</h1>
+        <button class="btn-power" id="start-experience-btn">Encender Espacio</button>
+    </div>
+
+    <div id="tv-linking-panel">
+    <h2>VINCULAR TV</h2>
+    <div id="qr-reader-v2"></div>
+    <p>— O INTRODUCE EL CÓDIGO —</p>
+    <input type="text" id="manual-code-input" placeholder="00000" maxlength="5" autocomplete="off" autocorrect="off" spellcheck="false">
+    <button class="btn-connect" id="connect-manual-btn">CONECTAR</button>
+    
+    <!-- NOTA DISCRETA DE PRÓXIMAMENTE -->
+    <div style="margin-top: 10px; text-align: center;">
+        <span style="font-size: 9px; color: var(--gold); letter-spacing: 1px; opacity: 0.8;">✨ Próximamente: VINCULACION TV</span>
+    </div>
+
+    <button class="btn-cancel-tv" id="cancel-linking" style="margin-top: 8px;">VOLVER AL PANEL</button>
+</div>
+
+    <div id="password-modal-backdrop" class="drawer-backdrop" style="z-index: 10005;" onclick="if(event.target === this) cerrarModalPwd(event)">
+        <div id="password-modal" class="aura-modal">
+            <h2 style="color: var(--gold); font-size: 14px; letter-spacing: 3px; margin-top: 0; margin-bottom: 8px;">SEGURIDAD</h2>
+            <p style="color: rgba(255,255,255,0.5); font-size: 11px; margin-bottom: 20px; text-align: center; font-family: 'Lato', sans-serif;">Ingresa tu contraseña actual y la nueva.</p>
+
+            <input type="password" class="aura-input" placeholder="Contraseña Actual" id="current-pwd">
+            <input type="password" class="aura-input" placeholder="Nueva Contraseña" id="new-pwd">
+            <input type="password" class="aura-input" placeholder="Confirmar Nueva" id="confirm-pwd">
+
+            <div style="display: flex; gap: 10px; margin-top: 15px; width: 100%;">
+                <button class="aura-btn" onclick="cerrarModalPwd(event)" style="flex: 1; border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); background: transparent; padding: 10px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; border-radius: 2px; cursor: pointer;">Cancelar</button>
+                <button class="aura-btn" id="save-pwd-btn" style="flex: 1; background: rgba(212, 175, 55, 0.05); border-color: var(--gold); color: var(--gold); padding: 10px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; border-radius: 2px; cursor: pointer;">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-backdrop" class="drawer-backdrop">
+        <div id="settings-drawer" class="side-drawer">
+            <aside class="aura-sidebar">
+                
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(212, 175, 55, 0.15);">
+    <div style="width: 42px; height: 42px; border-radius: 50%; background: rgba(212,175,55,0.05); border: 1px solid rgba(212, 175, 55, 0.4); display: flex; align-items: center; justify-content: center; color: var(--gold-text); font-size: 14px; font-weight: 600; letter-spacing: 1px;">A</div>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span style="font-size: 14px; font-weight: 600; color: var(--fg); letter-spacing: 2px;">AURA STUDIO</span>
+        
+    </div>
+</div>
+
+                
+
+                <div class="aura-accordion">
+    <div class="aura-accordion-header" onclick="toggleAccordion(this)">
+        <span>⚙️ Preferencias</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+    <div class="aura-accordion-content">
+        <div class="aura-section" style="padding: 0;">
+            <div class="aura-row aura-row-stack" style="margin-bottom: 12px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 6px;">
+        <label for="aura-environment" class="aura-label" id="lbl-env-title" style="margin-bottom: 0;">Ambiente / Fachada</label>
+        <span style="font-size: 9px; color: var(--gold); letter-spacing: 0.5px; opacity: 0.85; font-weight: 500;">✨ Próximamente más estilos</span>
+    </div>
+    <select id="aura-environment" class="aura-select" style="width: 100%;">
+        <option value="1" selected>Estilo 1: Fuego AURA (Predeterminado)</option>
+        <option value="2">Estilo 2: Chimenea Tradicional (En Desarrollo 🛠️)</option>
+    </select>
+    <p style="font-size: 10px; color: rgba(232, 232, 232, 0.4); margin-top: 6px; margin-bottom: 0; line-height: 1.3;">
+        Estamos trabajando en nuevos ambientes para que disfrutes de más estilos próximamente.
+    </p>
+</div>
+            
+            <!-- Resto de controles de Preferencias (Idioma, Audio, Temporizador, etc.) -->
+
+                            <div class="aura-row aura-row-stack">
+                                <label for="app-language" class="aura-label">Idioma</label>
+                                <select id="app-language" class="aura-select">
+                                    <option value="es">Español</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                            <div class="aura-row aura-row-stack">
+                                <label for="audio-quality" class="aura-label">Calidad de Audio</label>
+                                <select id="audio-quality" class="aura-select">
+                                    <option value="standard">Estándar (Bajo Consumo)</option>
+                                    <option value="lossless">Alta Fidelidad (Lossless)</option>
+                                </select>
+                            </div>
+                            <div class="aura-row aura-row-stack" style="margin-top: 12px;">
+                                <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                                    <label for="sleep-timer" class="aura-label" id="lbl-sleep-timer">Temporizador de Apagado</label>
+                                    <span id="sleep-countdown" style="font-size: 10px; color: var(--gold); letter-spacing: 1px; font-weight: 600;"></span>
+                                </div>
+                                <select id="sleep-timer" class="aura-select" style="width: 100%;">
+                                    <option value="off">Apagado</option>
+                                    <option value="15">15 Minutos</option>
+                                    <option value="30">30 Minutos</option>
+                                    <option value="45">45 Minutos</option>
+                                    <option value="60">60 Minutos</option>
+                                </select>
+                            </div>
+                            
+                            <div class="aura-row">
+                                <label for="haptic-mode" class="aura-label">Respuesta Háptica</label>
+                                <label class="aura-switch">
+                                    <input type="checkbox" id="haptic-mode" checked />
+                                    <span class="aura-slider-toggle"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="aura-accordion">
+                    <div class="aura-accordion-header" onclick="toggleAccordion(this)">
+                        <span>📡 Conectividad y TV</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </div>
+                    <div class="aura-accordion-content">
+                        <div class="aura-section" style="padding: 0;">
+                            <div class="aura-row aura-row-stack">
+                                <label for="sync-freq" class="aura-label">Frecuencia</label>
+                                <select id="sync-freq" class="aura-select">
+                                    <option value="realtime">Tiempo Real</option>
+                                    <option value="eco">Modo Ahorro</option>
+                                </select>
+                            </div>
+                            <div id="historial-tvs-container" style="margin-top: 16px; display: flex; flex-direction: column;"></div>
+                            <button type="button" class="aura-btn" id="btn-agregar-nueva-tv" style="margin-top: 12px; border-color: rgba(212, 175, 55, 0.2); color: rgba(212, 175, 55, 0.6); background: rgba(212, 175, 55, 0.02); display: flex; align-items: center; justify-content: center; gap: 8px;">
+                                <span>+ Agregar Dispositivo</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+               <!-- CÓDIGO ACTUALIZADO (LIMPIO) -->
+<div class="aura-accordion">
+    <div class="aura-accordion-header" onclick="toggleAccordion(this)">
+        <span>⚖️ Soporte y Legal</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div>
+    <div class="aura-accordion-content">
+        <div class="aura-section" style="padding: 0;">
+            <a href="#" class="aura-link" id="btn-help-center" style="margin-bottom: 14px;">Centro de Ayuda</a>
+            <a href="#" class="aura-link" id="btn-privacy" style="border-bottom: none;">Política de Privacidad</a>
+        </div>
+    </div>
+</div>
+
+                <section class="aura-section aura-egress" style="padding-top: 24px; margin-top: auto;">
+    <button type="button" class="aura-btn" id="close-settings-btn" style="width: 100%; border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6);">Cerrar Menú</button>
+    <div style="text-align: center; margin-top: 16px;">
+        <span style="font-size: 9px; color: rgba(232, 232, 232, 0.2); letter-spacing: 2px;">AURA v1.2.0 (BUILD 45)</span>
+    </div>
+</section>
+
+            </aside>
+        </div>
+    </div>
+
+    <div class="ui-overlay" id="ui-layer">
+        <div class="fire-zone" id="fire-zone">
+            <header class="header">
+                <button class="config-btn" id="config-trigger">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+                <div style="font-family:'Urbanist',sans-serif; font-size:16px; letter-spacing:8px; font-weight:300; color:var(--gold); position:absolute; left:50%; transform:translateX(-50%); pointer-events:none;">AURA</div>
+                <div></div>
+            </header>
+            </div>
+
+        <div class="controls-zone" id="controls-zone">
+            <!-- SELECTOR SEGMENTADO PREMIUM DE COLOR -->
+            <div id="color-segment-container" style="width: 100%; max-width: 310px; margin: 0 auto 20px auto; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                <span id="lbl-fire-color" style="font-size: 9px; font-family: 'Urbanist', sans-serif; letter-spacing: 3px; text-transform: uppercase; color: rgba(212, 175, 55, 0.6); font-weight: 600;">COLOR DE LLAMA</span>
+                
+                <div style="position: relative; width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 25px; padding: 4px; display: flex; align-items: center; justify-content: space-between; backdrop-filter: blur(10px);">
+                    
+                    <!-- Indicador Flotante (Glow Activo) -->
+                    <div id="segment-glow-pill" style="position: absolute; top: 4px; left: 33.33%; width: 33.33%; height: calc(100% - 8px); background: rgba(212, 175, 55, 0.12); border: 1px solid var(--gold); border-radius: 20px; box-shadow: 0 0 15px rgba(212, 175, 55, 0.25); transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none;"></div>
+
+                    <button class="btn-color-segment" data-pos="1" style="flex: 1; background: none; border: none; color: rgba(255,255,255,0.4); font-family: 'Urbanist', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; padding: 10px 0; cursor: pointer; z-index: 2; transition: color 0.3s ease;">ROJO</button>
+                    <button class="btn-color-segment active" data-pos="2" style="flex: 1; background: none; border: none; color: var(--gold); font-family: 'Urbanist', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; padding: 10px 0; cursor: pointer; z-index: 2; transition: color 0.3s ease;">NARANJA</button>
+                    <button class="btn-color-segment" data-pos="3" style="flex: 1; background: none; border: none; color: rgba(255,255,255,0.4); font-family: 'Urbanist', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; padding: 10px 0; cursor: pointer; z-index: 2; transition: color 0.3s ease;">AZUL</button>
+                </div>
+            </div>
+            <div class="capsules-container">
+                <div class="capsule-wrapper">
+                    <span class="capsule-value" id="bright-val">80%</span>
+                    <div class="slider-box">
+                        <div class="slider-fill" id="fill-bright" style="height:80%;"></div>
+                        <input type="range" min="10" max="100" value="80" class="vertical-slider" id="bright-slider">
+                    </div>
+                    <div class="capsule-footer-info">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5"></circle>
+                            <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                            <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                        </svg>
+                        <span>Brillo</span>
+                    </div>
+                </div>
+
+                <div class="capsule-wrapper">
+                    <span class="capsule-value" id="fire-val">50%</span>
+                    <div class="slider-box">
+                        <div class="slider-fill" id="fill-fire" style="height:50%;"></div>
+                        <input type="range" min="0" max="100" value="50" class="vertical-slider" id="fire-slider">
+                    </div>
+                    <button class="capsule-footer-btn active" id="btn-mute-fire">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path>
+                        </svg>
+                        <span>Fuego</span>
+                    </button>
+                </div>
+
+                <div class="capsule-wrapper">
+                    <span class="capsule-value" id="wind-val">30%</span>
+                    <div class="slider-box">
+                        <div class="slider-fill" id="fill-wind" style="height:30%;"></div>
+                        <input type="range" min="0" max="100" value="30" class="vertical-slider" id="wind-slider">
+                    </div>
+                    <button class="capsule-footer-btn active" id="btn-mute-wind">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path>
+                        </svg>
+                        <span>Viento</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- DOCK INFERIOR DE 4 ACCESOS RÁPIDOS -->
+            <div id="aura-dock-bottom" style="width: 100%; max-width: 360px; margin: 20px auto 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                
+                <!-- 1. TIMER CON POP-UP DE SELECCIÓN RÁPIDA -->
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                    
+                    <!-- Pop-up Selector Flotante -->
+                    <div id="aura-timer-popup" style="position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%) translateY(10px); background: rgba(12, 12, 14, 0.96); border: 1px solid rgba(212, 175, 55, 0.3); border-radius: 16px; padding: 6px; display: flex; gap: 6px; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 100;">
+                        <button class="btn-timer-option" data-mins="15" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(212,175,55,0.15); color: white; font-family: 'Urbanist', sans-serif; font-size: 10px; font-weight: 600; padding: 8px 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; outline: none; white-space: nowrap;">15m</button>
+                        <button class="btn-timer-option" data-mins="30" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(212,175,55,0.15); color: white; font-family: 'Urbanist', sans-serif; font-size: 10px; font-weight: 600; padding: 8px 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; outline: none; white-space: nowrap;">30m</button>
+                        <button class="btn-timer-option" data-mins="60" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(212,175,55,0.15); color: white; font-family: 'Urbanist', sans-serif; font-size: 10px; font-weight: 600; padding: 8px 12px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; outline: none; white-space: nowrap;">60m</button>
+                        <button class="btn-timer-option" data-mins="off" style="background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: #ff6b6b; font-family: 'Urbanist', sans-serif; font-size: 10px; font-weight: 600; padding: 8px 10px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease; outline: none; white-space: nowrap;">Off</button>
+                    </div>
+
+                    <!-- Botón Base del Dock -->
+                    <button class="btn-dock-item" id="btn-dock-timer" style="width: 100%; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 14px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.3s ease; outline: none;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                        </svg>
+                        <span id="txt-dock-timer" style="font-size: 8px; font-family: 'Urbanist', sans-serif; letter-spacing: 1.5px; color: rgba(255,255,255,0.6); text-transform: uppercase;">TIMER</span>
+                    </button>
+                </div>
+
+                <!-- 2. PIXEL ART -->
+                <button class="btn-dock-item" id="btn-dock-pixel" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 14px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.3s ease; outline: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span style="font-size: 8px; font-family: 'Urbanist', sans-serif; letter-spacing: 1.5px; color: rgba(255,255,255,0.6); text-transform: uppercase;">PIXEL ART</span>
+                </button>
+
+                <!-- 3. CONECTAR TV --> 
+                <button class="btn-dock-item" id="btn-dock-tv" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 14px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.3s ease; outline: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                        <line x1="8" y1="21" x2="16" y2="21"></line>
+                        <line x1="12" y1="17" x2="12" y2="21"></line>
+                    </svg>
+                    <span style="font-size: 8px; font-family: 'Urbanist', sans-serif; letter-spacing: 1.5px; color: rgba(255,255,255,0.6); text-transform: uppercase;">CONECTAR TV</span>
+                </button>
+
+                <!-- 4. PANTALLA COMPLETA -->
+                <button class="btn-dock-item" id="btn-dock-fullscreen" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(212, 175, 55, 0.15); border-radius: 14px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer; transition: all 0.3s ease; outline: none;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <polyline points="9 21 3 21 3 15"></polyline>
+                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                    <span style="font-size: 8px; font-family: 'Urbanist', sans-serif; letter-spacing: 1.5px; color: rgba(255,255,255,0.6); text-transform: uppercase;">EXPANDIR</span>
+                </button>
+            </div>
+
+            
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+
+    <script>
+    // ─── CIRUGÍA AURA v12.5: ORQUESTACIÓN DE UI INTEGRADA (SIN DUPLICADOS) ───
+    document.addEventListener('DOMContentLoaded', () => {
+        // Inicializar el tamaño y redimensión del lienzo local de respaldo
+        const canvas = document.getElementById('fireCanvas');
+        if (canvas) {
+            function resizeCanvas() {
+                canvas.width  = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+        }
+
+        // Manejo nativo de transiciones de interfaz en el Chasis del HTML
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const uiLayer       = document.getElementById('ui-layer');
+        const fachadaTip       = document.getElementById('fachada-tip');
+        const expandFachadaBtn = document.getElementById('expand-fachada-btn');
+        const backdrop        = document.getElementById('settings-backdrop');
+        const drawer          = document.getElementById('settings-drawer');
+        const tvTrigger     = document.getElementById('tv-header-trigger');
+        const tvPanel       = document.getElementById('tv-linking-panel');
+        const cancelTvBtn   = document.getElementById('cancel-linking');
+
+        // Controladores de apertura y cierre del Drawer lateral de Preferencias
+        function openDrawer() {
+            if(backdrop && drawer) {
+                backdrop.style.display = 'block';
+                setTimeout(() => { backdrop.classList.add('active'); drawer.classList.add('active'); }, 10);
+            }
+        }
+
+        function closeDrawer() {
+            if(backdrop && drawer) {
+                backdrop.classList.remove('active'); drawer.classList.remove('active');
+                setTimeout(() => { backdrop.style.display = 'none'; }, 400);
+            }
+        }
+
+        ['config-trigger', 'config-trigger-remote'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (btn) btn.addEventListener('click', e => { e.preventDefault(); openDrawer(); });
+        });
+
+        const closeBtn = document.getElementById('close-settings-btn');
+        if (closeBtn) closeBtn.addEventListener('click', e => { e.preventDefault(); closeDrawer(); });
+        if (backdrop) backdrop.addEventListener('click', e => { if (e.target === backdrop) closeDrawer(); });
+
+        // Receptor del modo Fachada libre (Contemplación Completa)
+        if (expandFachadaBtn) {
+            expandFachadaBtn.addEventListener('click', e => {
+                e.preventDefault(); e.stopPropagation();
+                window.isFachadaMode = true;
+                if(uiLayer) { uiLayer.style.opacity = '0'; uiLayer.style.pointerEvents = 'none'; }
+                if (fachadaTip) {
+                    fachadaTip.style.opacity = '1';
+                    setTimeout(() => { fachadaTip.style.opacity = '0'; }, 3000);
+                }
+            });
+        }
+
+        
+
+        // Interfaces de control para el Panel de Vinculación de Smart TV
+        if (tvTrigger && tvPanel) {
+            tvTrigger.addEventListener('click', e => { e.preventDefault(); tvPanel.style.display = 'flex'; if (typeof window.startQRScanner === 'function') window.startQRScanner(); });
+        }
+        if (cancelTvBtn && tvPanel) {
+            cancelTvBtn.addEventListener('click', e => { e.preventDefault(); if (typeof window.stopQRScanner === 'function') window.stopQRScanner(); tvPanel.style.display = 'none'; });
+        }
+
+       // Animación Háptica del Candado de Aura Pro
+        const auraProBtn  = document.getElementById('aura-pro-btn');
+        const auraProLock = document.getElementById('aura-pro-lock');
+        if (auraProBtn) {
+            auraProBtn.addEventListener('click', e => {
+                e.preventDefault(); e.stopPropagation();
+                auraProBtn.classList.remove('aura-pro-shake');
+                void auraProBtn.offsetWidth;
+                auraProBtn.classList.add('aura-pro-shake');
+                if (auraProLock) auraProLock.style.transform = 'scale(1.2)';
+                setTimeout(() => { auraProBtn.classList.remove('aura-pro-shake'); if (auraProLock) auraProLock.style.transform = 'scale(1)'; }, 450);
+            });
+        }
+
+        // ─── CONEXIÓN NATIVA DEL BOTÓN EN EL CHASIS DEL DASHBOARD ───
+        const startBtnReal = document.getElementById('start-experience-btn');
+        if (startBtnReal) {
+            startBtnReal.addEventListener('click', () => {
+                // 1. Transición de pantallas (Apaga bienvenida, enciende controles)
+                if (welcomeScreen) {
+                    welcomeScreen.style.opacity = '0';
+                    welcomeScreen.style.visibility = 'hidden';
+                }
+                if (uiLayer) {
+                    uiLayer.style.opacity = '1';
+                    uiLayer.style.pointerEvents = 'auto';
+                }
+
+                // 2. Encendido del motor gráfico global (Clase FireParticle en script.js)
+                window.isFireActive = true;
+
+                // 3. Forzar el renderizado inmediato de los rellenos dorados de los sliders
+                if (typeof window.updateSliderFill === 'function') {
+                    const bS = document.getElementById('bright-slider');
+                    const fS = document.getElementById('fire-slider');
+                    const wS = document.getElementById('wind-slider');
+                    if (bS) window.updateSliderFill('bright', bS.value);
+                    if (fS) window.updateSliderFill('fire', fS.value);
+                    if (wS) window.updateSliderFill('wind', wS.value);
+                }
+                
+                // 4. Revelado del nuevo contenedor de fachada maestra modular
+                const marcoMaster = document.getElementById('capa-marco-signature');
+                if (marcoMaster) {
+                    marcoMaster.style.opacity = '1';
+                }
+                
+                // REVELADO DE TRONCOS: La leña de alta fidelidad se enciende en medio
+                const leñaMaster = document.getElementById('capa-leña-incandescente');
+                if (leñaMaster) {
+                    leñaMaster.style.opacity = '1';
+                }
+                
+                // ENCENDER EL SUELO: Activación síncrona del reflejo lumínico inferior
+                const reflejoSuelo = document.getElementById('reflejo-suelo-ambiental');
+                if (reflejoSuelo) {
+                    reflejoSuelo.style.opacity = '1';
+                }
+            });
+        }
+    });
+    
+    </script>
+
+    <script>
+    function abrirModalPwd(e) {
+        if(e) e.preventDefault();
+        const backdrop = document.getElementById('password-modal-backdrop');
+        const modal = document.getElementById('password-modal');
+        if(backdrop && modal) {
+            backdrop.style.display = 'block';
+            setTimeout(() => {
+                backdrop.classList.add('active');
+                modal.classList.add('active');
+            }, 10);
+        }
+    }
+
+    function cerrarModalPwd(e) {
+        if(e) e.preventDefault();
+        const backdrop = document.getElementById('password-modal-backdrop');
+        const modal = document.getElementById('password-modal');
+        if(backdrop && modal) {
+            backdrop.classList.remove('active');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                backdrop.style.display = 'none';
+            }, 300);
+        }
+    }
+    </script>
+    <script>
+    function toggleAccordion(header) {
+        document.querySelectorAll('.aura-accordion-header').forEach(h => {
+            if (h !== header) {
+                h.classList.remove('active');
+                if(h.nextElementSibling) h.nextElementSibling.classList.remove('active');
+            }
+        });
+        header.classList.toggle('active');
+        if(header.nextElementSibling) header.nextElementSibling.classList.toggle('active');
+    }
+    
+    </script>
+    <!-- MODAL COMERCIAL -->
+    <div id="modal-suscripcion" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 9999; justify-content: center; align-items: center; font-family: 'Urbanist', sans-serif;">
+        <div style="background: #111111; border: 1px solid #d4af37; border-radius: 8px; width: 90%; max-width: 320px; padding: 24px; box-sizing: border-box; text-align: center;">
+            <h3 style="color: #d4af37; margin: 0 0 8px 0; font-size: 18px; letter-spacing: 2px; text-transform: uppercase;">AURA PRO</h3>
+            <p id="txt-sub-status" style="color: rgba(255,255,255,0.6); font-size: 12px; margin-bottom: 20px; letter-spacing: 0.5px;">Estado: Plan Gratuito (Limitado)</p>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin-bottom: 20px;">
+            <div id="box-compra-pro" style="display: block;">
+                <p style="color: #ffffff; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">Desbloquea todos los ambientes, 10 fachadas futuras, transmisión ilimitada a Smart TV y audio de alta fidelidad sin restricciones.</p>
+                <button id="btn-comprar-real" style="width: 100%; background: #d4af37; color: #000000; border: none; padding: 12px; font-weight: 700; border-radius: 4px; cursor: pointer; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;">Suscribirse - $49.00 MXN/mes</button>
+            </div>
+            <div id="box-cancelar-pro" style="display: none;">
+                <p style="color: #ffffff; font-size: 13px; margin-bottom: 20px; line-height: 1.5;">Eres miembro Pro. Tienes acceso completo al ecosistema de atmósfera premium.</p>
+                <button id="btn-cancelar-real" style="width: 100%; background: transparent; color: #ff4444; border: 1px solid #ff4444; padding: 12px; font-weight: 600; border-radius: 4px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;">Cancelar Suscripción</button>
+            </div>
+            <button onclick="document.getElementById('modal-suscripcion').style.display = 'none'" style="background: transparent; color: rgba(255,255,255,0.4); border: none; font-size: 11px; cursor: pointer; text-decoration: underline; letter-spacing: 1px;">Cerrar</button>
+        </div>
+    </div>
+    <!-- MODAL LEGAL -->
+    <div id="modal-legal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 9999; justify-content: center; align-items: center; font-family: 'Urbanist', sans-serif;">
+        <div style="background: #111111; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; width: 90%; max-width: 400px; max-height: 80vh; padding: 24px; box-sizing: border-box; display: flex; flex-direction: column; gap: 16px;">
+            <h3 id="txt-legal-title" style="color: var(--gold); margin: 0; font-size: 16px; letter-spacing: 2px; text-transform: uppercase; text-align: center;">Documento</h3>
+            <div id="txt-legal-body" style="color: rgba(255,255,255,0.7); font-size: 12px; line-height: 1.6; overflow-y: auto; padding-right: 8px; text-align: left; white-space: pre-line; letter-spacing: 0.5px;">Cargando información...</div>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 0;">
+            <button onclick="document.getElementById('modal-legal').style.display = 'none'" style="background: transparent; color: rgba(255,255,255,0.4); border: none; font-size: 11px; cursor: pointer; text-decoration: underline; letter-spacing: 1px; align-self: center; padding: 4px;">Cerrar Documento</button>
+        </div>
+    </div>
+
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+        <defs>
+            <filter id="distorsion-calor-aura">
+                <feTurbulence type="fractalNoise" baseFrequency="0.015 0.08" numOctaves="2" result="noise">
+                    <animate attributeName="baseFrequency" dur="5s" values="0.015 0.08; 0.015 0.4; 0.015 0.08" repeatCount="indefinite" />
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+        </defs>
+    </svg>
+    
+</body>
+</html>
